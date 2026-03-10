@@ -1,0 +1,358 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root{--nd-bg:#222;--nd-surface:#303030;--nd-surface-light:#3a3a3a;--nd-accent-blue:#4DA8DA;--nd-accent-orange:#E8843C;--nd-primary:#375a7f;--nd-primary-hover:#4a7aab;--nd-success:#00bc8c;--nd-danger:#e74c3c;--nd-text:#fff;--nd-text-muted:#adb5bd;--nd-border:rgba(255,255,255,0.1);--nd-card-radius:10px;--nd-font-ui:'Outfit',-apple-system,sans-serif;--nd-font-content:'Playfair Display','Times New Roman',Georgia,serif}
+[data-theme="light"]{--nd-bg:#f0f2f5;--nd-surface:#fff;--nd-surface-light:#f8f9fa;--nd-primary:#2c3e50;--nd-primary-hover:#3a5068;--nd-text:#212529;--nd-text-muted:#6c757d;--nd-border:rgba(0,0,0,0.1)}
+body{font-family:var(--nd-font-ui)!important;background:var(--nd-bg)!important;color:var(--nd-text)!important;overflow-x:hidden}
+
+/* ================================================================
+   DASH 4 DROPDOWN — EXACT CLASS TARGETING
+   ================================================================ */
+
+/* The trigger button */
+button.dash-dropdown {
+    background-color: #1a1a1a !important;
+    border: 1px solid #444 !important;
+    color: #ccc !important;
+}
+
+/* Value text inside trigger */
+.dash-dropdown-value,
+.dash-dropdown-value span,
+.dash-dropdown-value-item,
+.dash-dropdown-value-item span,
+.dash-dropdown-value-count {
+    color: #ccc !important;
+    background: transparent !important;
+    -webkit-text-fill-color: #ccc !important;
+}
+/* Remove any selection highlight on the value */
+button.dash-dropdown span,
+button.dash-dropdown *::selection {
+    background: transparent !important;
+}
+
+/* The floating popup (radix popper) */
+[data-radix-popper-content-wrapper] {
+    z-index: 9999 !important;
+}
+
+/* The dropdown content panel */
+.dash-dropdown-content,
+div[class*="dash-dropdown-content"] {
+    background-color: #1a1a1a !important;
+    border: 1px solid #444 !important;
+    color: #ccc !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+}
+
+/* Remove any default shadow on popper wrapper */
+[data-radix-popper-content-wrapper] * {
+    box-shadow: none;
+}
+
+/* Search container and input */
+.dash-dropdown-search-container,
+.dash-dropdown-grid-container.dash-dropdown-search-container {
+    background-color: #1a1a1a !important;
+    border-bottom: 1px solid #333 !important;
+}
+
+input.dash-dropdown-search,
+input[class*="dash-dropdown-search"] {
+    background-color: #1a1a1a !important;
+    color: #ccc !important;
+    border: none !important;
+}
+input.dash-dropdown-search::placeholder {
+    color: #777 !important;
+}
+
+/* Search icon */
+.dash-dropdown-search-icon,
+svg.dash-dropdown-search-icon {
+    color: #777 !important;
+    fill: #777 !important;
+}
+
+/* Options list container */
+.dash-options-list,
+.dash-dropdown-options,
+div[class*="dash-options-list"],
+div[class*="dash-dropdown-options"] {
+    background-color: #1a1a1a !important;
+}
+
+/* Individual options */
+.dash-options-list-option,
+.dash-dropdown-option,
+label[class*="dash-options-list-option"],
+label[class*="dash-dropdown-option"] {
+    background-color: #1a1a1a !important;
+    color: #ccc !important;
+}
+
+/* Option text */
+.dash-options-list-option-text,
+span[class*="option-text"] {
+    color: #ccc !important;
+}
+
+/* Option wrapper (radio/checkbox area) */
+.dash-options-list-option-wrapper {
+    background-color: #1a1a1a !important;
+}
+
+/* Hovered option */
+.dash-options-list-option:hover,
+.dash-dropdown-option:hover,
+label[class*="dash-options-list-option"]:hover,
+label[class*="dash-dropdown-option"]:hover {
+    background-color: #375a7f !important;
+    color: #fff !important;
+}
+.dash-options-list-option:hover .dash-options-list-option-text,
+.dash-dropdown-option:hover span {
+    color: #fff !important;
+}
+
+/* Selected option */
+.dash-options-list-option.selected,
+.dash-options-list-option[aria-selected="true"],
+label[aria-selected="true"] {
+    background-color: #2a2a3a !important;
+    color: #fff !important;
+}
+
+/* Checkbox inside options */
+.dash-options-list-option-checkbox {
+    accent-color: var(--nd-accent-blue) !important;
+}
+
+/* Multi-value items (tags) */
+.dash-dropdown-value-item {
+    background-color: var(--nd-primary) !important;
+    color: #fff !important;
+    border-radius: 4px;
+}
+
+/* Clear and trigger icons */
+.dash-dropdown-clear,
+.dash-dropdown-trigger-icon,
+a.dash-dropdown-clear {
+    color: #888 !important;
+}
+.dash-dropdown-clear svg,
+.dash-dropdown-trigger-icon svg {
+    fill: #888 !important;
+    color: #888 !important;
+}
+
+/* ================================================================
+   LIGHT THEME DROPDOWN OVERRIDES
+   ================================================================ */
+[data-theme="light"] button.dash-dropdown {
+    background-color: #fff !important;
+    border-color: #ccc !important;
+    color: #212529 !important;
+}
+[data-theme="light"] .dash-dropdown-value,
+[data-theme="light"] .dash-dropdown-value span,
+[data-theme="light"] .dash-dropdown-value-item span,
+[data-theme="light"] .dash-dropdown-value-count {
+    color: #212529 !important;
+    background: transparent !important;
+    -webkit-text-fill-color: #212529 !important;
+}
+[data-theme="light"] button.dash-dropdown span,
+[data-theme="light"] button.dash-dropdown *::selection {
+    background: transparent !important;
+}
+[data-theme="light"] .dash-dropdown-content,
+[data-theme="light"] div[class*="dash-dropdown-content"] {
+    background-color: #fff !important;
+    border-color: #ddd !important;
+    color: #212529 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+[data-theme="light"] .dash-dropdown-search-container {
+    background-color: #fff !important;
+    border-bottom-color: #eee !important;
+}
+[data-theme="light"] input.dash-dropdown-search {
+    background-color: #fff !important;
+    color: #212529 !important;
+}
+[data-theme="light"] input.dash-dropdown-search::placeholder { color: #999 !important; }
+[data-theme="light"] .dash-dropdown-search-icon,
+[data-theme="light"] svg.dash-dropdown-search-icon { color: #999 !important; fill: #999 !important; }
+[data-theme="light"] .dash-options-list,
+[data-theme="light"] .dash-dropdown-options {
+    background-color: #fff !important;
+}
+[data-theme="light"] .dash-options-list-option,
+[data-theme="light"] .dash-dropdown-option,
+[data-theme="light"] label[class*="dash-options-list-option"] {
+    background-color: #fff !important;
+    color: #212529 !important;
+}
+[data-theme="light"] .dash-options-list-option-text { color: #212529 !important; }
+[data-theme="light"] .dash-options-list-option:hover,
+[data-theme="light"] .dash-dropdown-option:hover {
+    background-color: #e9ecef !important;
+}
+
+/* ================================================================
+   NAVBAR
+   ================================================================ */
+.neurodac-navbar{background:rgba(48,48,48,0.92)!important;backdrop-filter:blur(10px);border-bottom:1px solid var(--nd-border);padding:.35rem 1.2rem;position:sticky;top:0;z-index:100}
+[data-theme="light"] .neurodac-navbar{background:rgba(255,255,255,0.92)!important}
+.neurodac-brand{font-weight:700;font-size:1.25rem;letter-spacing:1.5px;color:var(--nd-accent-blue)!important;text-decoration:none!important;display:flex;align-items:center;gap:10px}
+.neurodac-brand img{height:34px;width:34px;border-radius:6px;object-fit:cover}
+.neurodac-brand .brand-sub{font-size:.58rem;font-weight:400;color:var(--nd-text-muted);letter-spacing:.5px;display:block}
+.nav-pills .nav-link{font-weight:500;font-size:.8rem;color:var(--nd-text-muted)!important;border-radius:6px;padding:.38rem .85rem}
+.nav-pills .nav-link:hover{color:var(--nd-text)!important;background:rgba(255,255,255,.05)}
+[data-theme="light"] .nav-pills .nav-link:hover{background:rgba(0,0,0,.04)}
+.nav-pills .nav-link.active{background:var(--nd-primary)!important;color:#fff!important}
+
+/* TOGGLE */
+.theme-toggle-wrapper{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.theme-toggle-label{font-size:.72rem;font-weight:500;color:var(--nd-text-muted);text-transform:uppercase;letter-spacing:.5px}
+.theme-toggle-track{position:relative;width:44px;height:22px;background:var(--nd-surface-light);border-radius:11px;cursor:pointer;border:1px solid var(--nd-border)}
+.theme-toggle-track.light{background:#dce6f0;border-color:rgba(0,0,0,.15)}
+.theme-toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--nd-accent-blue);transition:left .3s,background .3s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.theme-toggle-track.light .theme-toggle-knob{left:24px;background:var(--nd-accent-orange)}
+
+/* CARDS */
+.card{background:var(--nd-surface)!important;border:1px solid var(--nd-border)!important;border-radius:var(--nd-card-radius)!important}
+.card-header{background:var(--nd-surface-light)!important;border-bottom:1px solid var(--nd-border)!important;color:var(--nd-text)!important;font-size:.83rem}
+.card-body{color:var(--nd-text)!important}
+
+/* EDU PANEL */
+.edu-panel{font-family:var(--nd-font-content)!important;font-size:.9rem;line-height:1.6;color:var(--nd-text);padding:.85rem;background:var(--nd-surface);border:1px solid var(--nd-border);border-left:3px solid var(--nd-accent-orange);border-radius:0 var(--nd-card-radius) var(--nd-card-radius) 0;margin:.4rem 0}
+.edu-panel h5,.edu-panel h6{font-family:var(--nd-font-content)!important;font-weight:600;color:var(--nd-accent-blue);margin-bottom:.35rem;font-size:.93rem}
+.edu-panel em{color:var(--nd-accent-orange)}
+
+/* NEURON DECORATION */
+.neuron-decoration{width:100%;height:160px;margin-top:.8rem;border-radius:var(--nd-card-radius);overflow:hidden;border:1px solid var(--nd-border);background:var(--nd-surface)}
+.neuron-decoration canvas{width:100%;height:100%;display:block}
+
+/* INPUTS */
+.form-control,input[type="text"]{background:#1a1a1a!important;border:1px solid #444!important;color:#ccc!important;border-radius:6px!important;font-size:.85rem!important}
+.form-control:focus,input[type="text"]:focus{border-color:var(--nd-accent-blue)!important;box-shadow:0 0 0 2px rgba(77,168,218,.2)!important}
+.form-control::placeholder,input::placeholder{color:#777!important}
+[data-theme="light"] .form-control,[data-theme="light"] input[type="text"]{background:#fff!important;border-color:#ccc!important;color:#212529!important}
+[data-theme="light"] .form-control::placeholder,[data-theme="light"] input::placeholder{color:#999!important}
+
+/* SLIDER — DASH 4 EXACT CLASSES */
+/* Track (the background line) */
+.dash-slider-track,
+span.dash-slider-track {
+    background-color: #888 !important;
+    height: 5px !important;
+}
+[data-theme="light"] .dash-slider-track { background-color: #ccc !important; }
+
+/* Range (the filled/selected portion) */
+.dash-slider-range,
+span.dash-slider-range {
+    background-color: var(--nd-accent-blue) !important;
+    height: 5px !important;
+}
+
+/* Marks (the text labels like "0s", "34s") */
+.dash-slider-mark,
+div.dash-slider-mark,
+.dash-slider-mark-outside-selection,
+div.dash-slider-mark-outside-selection {
+    color: #bbb !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+}
+.dash-slider-mark::before,
+.dash-slider-mark-outside-selection::before {
+    color: #bbb !important;
+}
+[data-theme="light"] .dash-slider-mark,
+[data-theme="light"] div.dash-slider-mark,
+[data-theme="light"] .dash-slider-mark-outside-selection {
+    color: #495057 !important;
+}
+[data-theme="light"] .dash-slider-mark::before,
+[data-theme="light"] .dash-slider-mark-outside-selection::before {
+    color: #495057 !important;
+}
+
+/* Thumb (the draggable handle) */
+.dash-slider-thumb,
+span.dash-slider-thumb {
+    background-color: var(--nd-accent-blue) !important;
+    border-color: var(--nd-accent-blue) !important;
+}
+
+/* Tooltip */
+.dash-slider-tooltip {
+    background: #1a1a1a !important;
+    color: #ccc !important;
+    border: 1px solid #444 !important;
+}
+[data-theme="light"] .dash-slider-tooltip {
+    background: #fff !important;
+    color: #212529 !important;
+    border-color: #ccc !important;
+}
+
+/* Input boxes at ends of range slider */
+.dash-input-container,
+input.dash-range-slider-input,
+input.dash-range-slider-min-input,
+input.dash-range-slider-max-input {
+    background: #1a1a1a !important;
+    color: #ccc !important;
+    border-color: #444 !important;
+}
+[data-theme="light"] .dash-input-container,
+[data-theme="light"] input.dash-range-slider-input,
+[data-theme="light"] input.dash-range-slider-min-input,
+[data-theme="light"] input.dash-range-slider-max-input {
+    background: #fff !important;
+    color: #212529 !important;
+    border-color: #ccc !important;
+}
+
+/* Also keep old rc-slider rules as fallback */
+.rc-slider-mark-text{color:#bbb!important;font-size:.75rem!important}
+.rc-slider-track{background:var(--nd-accent-blue)!important}
+.rc-slider-handle{border-color:var(--nd-accent-blue)!important;background:var(--nd-accent-blue)!important}
+.rc-slider-rail{background:#888!important}
+input[type="number"]{background:#1a1a1a!important;color:#ccc!important;border:1px solid #444!important}
+[data-theme="light"] input[type="number"]{background:#fff!important;color:#212529!important;border-color:#ccc!important}
+
+/* LABELS */
+label,.form-label,.form-check-label{color:var(--nd-text)!important}
+.form-check-label{font-size:.83rem}
+.form-check-input:checked{background-color:var(--nd-primary)!important;border-color:var(--nd-primary)!important}
+
+/* BUTTONS */
+.btn-nd-primary{background:var(--nd-primary);border:none;color:#fff;font-weight:500;font-size:.82rem;border-radius:6px;padding:.45rem 1rem}
+.btn-nd-primary:hover{background:var(--nd-primary-hover);color:#fff}
+.btn-nd-danger{background:transparent;border:1px solid var(--nd-danger);color:var(--nd-danger);font-weight:500;font-size:.82rem;border-radius:6px;padding:.45rem 1rem}
+.btn-nd-danger:hover{background:var(--nd-danger);color:#fff}
+.btn-play{background:var(--nd-accent-orange);border:none;color:#fff;font-weight:600;border-radius:6px;padding:.4rem 1.2rem}
+.btn-play:hover{background:#d4742e;color:#fff}
+.btn-play-stop{background:var(--nd-danger);border:none;color:#fff;font-weight:600;border-radius:6px;padding:.4rem 1.2rem}
+
+.alert{border-radius:6px!important;font-size:.82rem}
+.page-content{animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.section-title{font-weight:600;font-size:1.35rem;color:var(--nd-text);text-align:center;margin-bottom:.7rem}
+.section-title::after{content:'';display:block;width:40px;height:2px;background:var(--nd-accent-orange);margin:5px auto 0;border-radius:1px}
+.game-canvas-container{position:relative;width:100%;border-radius:var(--nd-card-radius);overflow:hidden;background:#111;border:1px solid var(--nd-border)}
+.graph-container{border-radius:var(--nd-card-radius);overflow:hidden;border:1px solid var(--nd-border)}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:16px;font-size:.75rem;font-weight:500}
+.status-badge.connected{background:rgba(0,188,140,.15);color:var(--nd-success)}
+.status-badge.disconnected{background:rgba(231,76,60,.15);color:var(--nd-danger)}
+.status-badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pd 1.5s infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
+.playback-controls{display:flex;align-items:center;gap:8px;padding:.3rem 0}
+.playback-controls .speed-label{font-size:.75rem;color:var(--nd-text-muted)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--nd-bg)}::-webkit-scrollbar-thumb{background:var(--nd-surface-light);border-radius:3px}
