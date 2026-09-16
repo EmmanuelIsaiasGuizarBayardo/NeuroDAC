@@ -1,0 +1,108 @@
+/* ============================================================
+   NEURODAC - Indicador de calidad de senal
+   Archivo aparte a proposito: Dash carga todos los .css de
+   assets/, asi que esto no obliga a tocar custom.css.
+   ============================================================ */
+
+.nd-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* --- Variantes del distintivo que faltaban --- */
+.status-badge.warning {
+    background: rgba(232, 132, 60, 0.15);
+    color: var(--nd-accent-orange);
+}
+
+.status-badge.info {
+    background: rgba(77, 168, 218, 0.15);
+    color: var(--nd-accent-blue);
+}
+
+/* --- Bloque de calidad --- */
+.nd-quality {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* La instruccion accionable: es lo que el operador lee bajo presion,
+   asi que va en la serifa del contenido y no en la de la interfaz. */
+.nd-hint {
+    font-family: var(--nd-font-content);
+    font-size: 0.86rem;
+    line-height: 1.45;
+    color: var(--nd-text-muted);
+}
+
+/* --- Avance de calibracion --- */
+.nd-progress {
+    width: 100%;
+    height: 4px;
+    background: rgba(128, 128, 128, 0.25);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.nd-progress-fill {
+    height: 100%;
+    background: var(--nd-accent-blue);
+    border-radius: 2px;
+    transition: width 0.4s linear;
+}
+
+/* --- Metricas del enlace --- */
+.nd-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.74rem;
+    color: var(--nd-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.nd-metric-name {
+    opacity: 0.65;
+}
+
+.nd-error {
+    font-size: 0.74rem;
+    color: var(--nd-danger);
+    word-break: break-word;
+}
+
+/* --- Compuerta de arranque de los juegos --- */
+.nd-gate {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(3px);
+    border-radius: var(--nd-card-radius);
+}
+
+[data-theme="light"] .nd-gate {
+    background: rgba(255, 255, 255, 0.82);
+}
+
+.nd-gate-title {
+    font-family: var(--nd-font-ui);
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--nd-text);
+}
+
+.nd-gate-hint {
+    font-family: var(--nd-font-content);
+    font-size: 0.92rem;
+    max-width: 34ch;
+    color: var(--nd-text-muted);
+}
