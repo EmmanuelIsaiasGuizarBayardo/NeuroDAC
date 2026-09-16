@@ -7,13 +7,9 @@ Se ejecutan sin diadema y sin dependencias externas::
 
 from __future__ import annotations
 
-import os
-import sys
 import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from modules.thinkgear import (  # noqa: E402
+from neurodac.thinkgear import (
     BAND_NAMES,
     Code,
     ThinkGearParser,
@@ -66,8 +62,7 @@ class TestScalarCodes(unittest.TestCase):
         self.assertEqual(self._one(bytes([Code.POOR_SIGNAL, 200])).value, 200)
 
     def test_several_rows_in_one_packet(self):
-        payload = bytes([Code.POOR_SIGNAL, 0, Code.ATTENTION, 60,
-                         Code.MEDITATION, 40])
+        payload = bytes([Code.POOR_SIGNAL, 0, Code.ATTENTION, 60, Code.MEDITATION, 40])
         events = ThinkGearParser().feed(build_packet(payload))
         self.assertEqual(
             [(e.code, e.value) for e in events],

@@ -24,12 +24,12 @@ from dataclasses import dataclass
 from enum import IntEnum
 
 __all__ = [
+    "BAND_NAMES",
     "Code",
     "Event",
     "ThinkGearParser",
-    "BAND_NAMES",
-    "checksum",
     "build_packet",
+    "checksum",
     "parse_payload",
 ]
 
@@ -41,10 +41,14 @@ EXCODE = 0x55
 MAX_PAYLOAD_LENGTH = 169
 
 BAND_NAMES = (
-    "delta", "theta",
-    "low-alpha", "high-alpha",
-    "low-beta", "high-beta",
-    "low-gamma", "mid-gamma",
+    "delta",
+    "theta",
+    "low-alpha",
+    "high-alpha",
+    "low-beta",
+    "high-beta",
+    "low-gamma",
+    "mid-gamma",
 )
 
 
@@ -122,7 +126,7 @@ def _decode_value(code: int, raw: bytes) -> object:
         # Ocho bandas, cada una entero sin signo de 3 bytes big-endian.
         # Base 256, no 255: es donde fallaba la implementacion anterior.
         return {
-            name: int.from_bytes(raw[i * 3:i * 3 + 3], "big")
+            name: int.from_bytes(raw[i * 3 : i * 3 + 3], "big")
             for i, name in enumerate(BAND_NAMES)
         }
 
@@ -167,7 +171,7 @@ def parse_payload(payload: bytes) -> list[Event]:
         if i + vlength > n:
             break
 
-        raw = payload[i:i + vlength]
+        raw = payload[i : i + vlength]
         i += vlength
         events.append(Event(code, _decode_value(code, raw), extended))
 
@@ -231,7 +235,7 @@ class ThinkGearParser:
             if len(self._buffer) < total:
                 return
 
-            payload = bytes(self._buffer[3:3 + plength])
+            payload = bytes(self._buffer[3 : 3 + plength])
             received = self._buffer[3 + plength]
             del self._buffer[:total]
 
