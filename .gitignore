@@ -1,0 +1,42 @@
+# ── Entornos y cache ─────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.env
+
+# ── Datos: se ignora el contenido, se preserva la topologia ──────────────────
+data/**
+!data/raw/
+!data/processed/
+!data/**/.gitkeep
+!data/raw/README.md
+
+results/**
+!results/.gitkeep
+
+# ── Formatos de senal (nunca a un repositorio publico) ───────────────────────
+*.edf
+*.bdf
+*.gdf
+*.vhdr
+*.vmrk
+*.eeg
+*.set
+*.fdt
+*.fif
+*.cnt
+*.mat
+
+# ── Multimedia y pesos de modelos ────────────────────────────────────────────
+*.mp4
+*.wav
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+
+# NOTA: uv.lock SI se versiona. Es el ancla de reproducibilidad del entorno.

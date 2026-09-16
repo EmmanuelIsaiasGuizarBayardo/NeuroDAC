@@ -1,0 +1,67 @@
+[project]
+name = "neurodac"
+version = "0.1.0"
+description = "Pendiente: objetivo del repositorio."
+readme = "README.md"
+requires-python = ">=3.12"
+
+# Sin pines de version: uv.lock es el que fija la resolucion exacta.
+dependencies = [
+    "mne",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "pandas",
+    "pyyaml",
+    "ipykernel",
+]
+
+[project.optional-dependencies]
+# Extra pesado, deliberadamente fuera de las dependencias base: el CI sincroniza
+# sin el y evita descargar ruedas CUDA de varios GB en cada push.
+gpu = [
+    "torch",
+    "torchvision",
+]
+
+[project.scripts]
+neurodac = "neurodac.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "pre-commit",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neurodac"]
+
+# ── uv ───────────────────────────────────────────────────────────────────────
+# El indice de PyTorch se declara explicito para que solo torch y torchvision lo
+# consulten; el resto se resuelve contra PyPI.
+[tool.uv.sources]
+torch = [{ index = "pytorch" }]
+torchvision = [{ index = "pytorch" }]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+# ── ruff ─────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# NPY: reglas especificas de NumPy. B: bugbear. I: orden de imports.
+select = ["E", "F", "I", "B", "UP", "NPY"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
