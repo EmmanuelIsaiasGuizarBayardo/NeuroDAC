@@ -1,554 +1,750 @@
-# pages/grafica.py — Visualización EEG v5
-# Página principal: visualización de señales EEG pregrabadas
-# con filtrado por bandas, reproducción automática y panel educativo.
+"""Visualizacion de registros EEG pregrabados.
+
+Esta pagina no toca la diadema: dibuja un registro que ya esta en disco. Su
+particularidad es que el registro no se versiona, asi que en un clon recien
+hecho no existe. En vez de fallar al importar, que tumbaria toda la
+aplicacion, la pagina arranca y explica que comando lo regenera.
+
+El filtrado se cachea por banda. Medido sobre el registro de 32 canales y
+192 s, filtrarlo completo toma 1.5 s; hacerlo dentro del callback, que
+dispara cada 250 ms durante la reproduccion, volveria la pagina inusable.
+Con cache el costo se paga una vez al elegir la banda.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
 
 import dash
-from dash import dcc, html, Input, Output, State, no_update, callback_context
 import dash_bootstrap_components as dbc
-import pandas as pd
-import plotly.graph_objs as go
-import mne
-import os
 import numpy as np
+import plotly.graph_objs as go
+from dash import Input, Output, State, callback_context, dcc, html, no_update
+
+from neurodac.eeg_io import Recording, load_demo
+
+logger = logging.getLogger(__name__)
 
 dash.register_page(
-    __name__, path="/",
-    name="Visualización EEG",
-    redirect_from=["/grafica"]
+    __name__, path="/", name="Visualizacion EEG", redirect_from=["/grafica"]
 )
 
-# =============================================================
-# Carga de datos
-# =============================================================
-csv_path = os.path.join(
-    os.path.dirname(__file__), "..", "data",
-    "sub-hc1_ses-hc_task-rest_eeg_clean.csv"
-    #"sub-hc1_ses-hc_task-rest_eeg_maestro.csv"
-    #"data.csv"
-)
-df = pd.read_csv(csv_path)
-df.columns = df.columns.str.strip()
-df.rename(columns={"git Timestamp": "Timestamp"}, inplace=True)
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-# Lista de canales disponibles (todas las columnas excepto Timestamp)
-signal_options = df.columns.drop('Timestamp').tolist()
-DEFAULT_SIGNAL = signal_options[0]  # Primer canal como default
+#: Registro cargado al importar. `None` si `data/` esta vacia, que es el
+#: estado por omision de un clon nuevo.
+RECORDING: Recording | None = load_demo(DATA_DIR)
 
-# Parámetros de muestreo
-SAMPLE_RATE = 512
-MAX_DURATION = int(len(df) / SAMPLE_RATE)
+#: Bandas clasicas del EEG, en hertz.
+BANDS: dict[str, tuple[float, float]] = {
+    "delta": (0.5, 4.0),
+    "theta": (4.0, 8.0),
+    "alpha": (8.0, 12.0),
+    "beta": (12.0, 30.0),
+    "gamma": (30.0, 50.0),
+}
 
-# Crear objeto RawArray de MNE para filtrado
-data_np = df[signal_options].to_numpy().T
-info = mne.create_info(
-    ch_names=signal_options,
-    sfreq=SAMPLE_RATE,
-    ch_types=['eeg'] * len(signal_options)
-)
-raw = mne.io.RawArray(data_np, info)
+#: Un arreglo filtrado por banda, calculado la primera vez que se pide.
+#: Cada entrada pesa lo mismo que el registro, unos 24 MB.
+_FILTER_CACHE: dict[str, np.ndarray] = {}
 
-# =============================================================
-# Contenido educativo (divulgativo, en Times New Roman)
-# =============================================================
-EDU = {
-    'none': (
-        'Señal EEG sin procesar',
-        'Lo que ves aquí es la actividad eléctrica de tu cerebro tal cual la capta '
-        'el electrodo. Es como escuchar todas las conversaciones de un salón al mismo '
-        'tiempo; una mezcla de muchas frecuencias distintas. Los picos grandes suelen '
-        'ser artefactos (parpadeos, movimientos musculares) y no actividad cerebral real.'
+WINDOW_DEFAULT_S = 10
+PLAYBACK_BASE_MS = 500
+
+IDS = {
+    "range": "eeg-range",
+    "play": "eeg-play",
+    "stop": "eeg-stop",
+    "speed": "eeg-speed",
+    "status": "eeg-playback-status",
+    "view": "eeg-view",
+    "signal_box": "eeg-signal-box",
+    "signal": "eeg-signal",
+    "filter": "eeg-filter",
+    "channel_box": "eeg-channel-box",
+    "channels": "eeg-channels",
+    "all": "eeg-select-all",
+    "none": "eeg-select-none",
+    "graph": "eeg-graph",
+    "edu": "eeg-edu",
+    "view_info": "eeg-view-info",
+    "tick": "eeg-tick",
+    "state": "eeg-playback-state",
+}
+
+# --------------------------------------------------------------- divulgacion
+
+EDU: dict[str, tuple[str, str]] = {
+    "none": (
+        "Senal EEG sin procesar",
+        (
+            "Lo que ves aqui es la actividad electrica de un cerebro tal cual la "
+            "capta el electrodo. Es como escuchar todas las conversaciones de un "
+            "salon al mismo tiempo; una mezcla de muchas frecuencias distintas. "
+            "Los picos grandes suelen ser artefactos, como parpadeos o movimientos "
+            "musculares, y no actividad cerebral real."
+        ),
     ),
-    'delta': (
-        'Ondas Delta · Las más lentas',
-        'Las ondas delta son como el latido profundo del cerebro dormido. Aparecen '
-        'cuando estamos en sueño profundo y nuestro cuerpo se dedica a repararse. '
-        'Si las vemos en alguien despierto, podría indicar que algo no anda bien '
-        'en el cerebro; por eso los neurólogos les prestan mucha atención.'
+    "delta": (
+        "Ondas Delta, las mas lentas",
+        (
+            "Las ondas delta son como el latido profundo del cerebro dormido. "
+            "Aparecen durante el sueno profundo, cuando el cuerpo se dedica a "
+            "repararse. Si las vemos en alguien despierto podria indicar que algo "
+            "no anda bien; por eso los neurologos les prestan mucha atencion."
+        ),
     ),
-    'theta': (
-        'Ondas Theta · Soñar despierto',
-        'Theta es la frecuencia de la creatividad y la ensoñación. Aparece cuando '
-        'tu mente divaga, cuando meditas profundamente, o cuando estás a punto de '
-        'quedarte dormido. El hipocampo; la región del cerebro encargada de formar '
-        'memorias; usa este ritmo para consolidar lo que aprendiste durante el día.'
+    "theta": (
+        "Ondas Theta, sonar despierto",
+        (
+            "Theta es la frecuencia de la creatividad y la ensonacion. Aparece "
+            "cuando la mente divaga, durante la meditacion profunda, o justo antes "
+            "de quedarse dormido. El hipocampo, la region encargada de formar "
+            "memorias, usa este ritmo para consolidar lo aprendido durante el dia."
+        ),
     ),
-    'alpha': (
-        'Ondas Alpha · Relajación consciente',
-        'Las ondas alpha fueron las primeras que se descubrieron en el EEG, allá por '
-        '1929. Aparecen cuando cierras los ojos y te relajas; es como si tu corteza '
-        'visual dijera "no hay nada que ver, descansemos". Si abres los ojos o '
-        'empiezas a pensar en algo, desaparecen inmediatamente. Por eso se usan mucho '
-        'en neurofeedback para enseñar a relajarse.'
+    "alpha": (
+        "Ondas Alpha, relajacion consciente",
+        (
+            "Fueron las primeras que se descubrieron en el EEG, en 1929. Aparecen "
+            "al cerrar los ojos y relajarse; es como si la corteza visual dijera "
+            "que no hay nada que ver y conviniera descansar. Al abrir los ojos o "
+            "ponerse a pensar desaparecen de inmediato, y por eso se usan tanto en "
+            "neurofeedback para ensenar a relajarse."
+        ),
     ),
-    'beta': (
-        'Ondas Beta · Pensamiento activo',
-        'Beta es la frecuencia del cerebro concentrado. Cuando resuelves un problema '
-        'de matemáticas, lees con atención o mantienes una conversación, tu cerebro '
-        'vibra en beta. Hay dos tipos: beta baja (concentración calmada) y beta alta '
-        '(estrés o ansiedad). En las interfaces cerebro-computadora, esta banda es '
-        'clave para detectar intenciones de movimiento.'
+    "beta": (
+        "Ondas Beta, pensamiento activo",
+        (
+            "Beta es la frecuencia del cerebro concentrado. Al resolver un problema "
+            "de matematicas, leer con atencion o sostener una conversacion, el "
+            "cerebro vibra en beta. Hay dos tipos: beta baja, de concentracion "
+            "calmada, y beta alta, ligada al estres. En las interfaces "
+            "cerebro-computadora es la banda clave para detectar intenciones de "
+            "movimiento."
+        ),
     ),
-    'gamma': (
-        'Ondas Gamma · El pegamento de la conciencia',
-        'Gamma es la frecuencia más rápida y misteriosa. Se cree que es responsable de '
-        '"pegar" toda la información sensorial en una experiencia unificada; lo que los '
-        'neurocientíficos llaman binding. Cuando ves un gato, gamma une su forma, color, '
-        'sonido y textura en un solo percepto. Son difíciles de medir porque los músculos '
-        'de la cara generan señales similares.'
+    "gamma": (
+        "Ondas Gamma, el pegamento de la conciencia",
+        (
+            "Gamma es la mas rapida y la mas misteriosa. Se cree que es "
+            "responsable de pegar toda la informacion sensorial en una experiencia "
+            "unificada. Cuando ves un gato, gamma une su forma, color, sonido y "
+            "textura en un solo percepto. Es dificil de medir porque los musculos "
+            "de la cara generan senales parecidas."
+        ),
     ),
 }
 
-VINFO = {
-    'única': (
-        'Vista única',
-        'Visualiza un solo canal. Ideal para examinar la forma de la señal en '
-        'detalle o aplicar filtros para aislar una banda de frecuencia.'
+VIEW_INFO: dict[str, tuple[str, str]] = {
+    "unica": (
+        "Vista unica",
+        (
+            "Un solo canal. Sirve para examinar la forma de la senal en detalle o "
+            "para aislar una banda de frecuencia con los filtros."
+        ),
     ),
-    'multi': (
-        'Vista multicanal',
-        'Montaje vertical como en un electroencefalógrafo clínico. Cada canal '
-        'con su propio color para distinguir regiones cerebrales.'
+    "multi": (
+        "Vista multicanal",
+        (
+            "Montaje vertical, como en un electroencefalografo clinico. Cada canal "
+            "con su color, para distinguir que hacen las distintas regiones."
+        ),
     ),
-    'superpuesta': (
-        'Vista superpuesta',
-        'Todas las señales en el mismo eje. Útil para comparar amplitudes; '
-        'se recomienda con 2–4 señales.'
+    "superpuesta": (
+        "Vista superpuesta",
+        (
+            "Todas las senales sobre el mismo eje. Util para comparar amplitudes; "
+            "se recomienda con dos a cuatro canales."
+        ),
     ),
 }
 
-# Bandas de frecuencia para filtrado
-BANDS = {
-    'delta': (0.5, 4),
-    'theta': (4, 8),
-    'alpha': (8, 12),
-    'beta': (12, 30),
-    'gamma': (30, 50),
-}
+
+# ------------------------------------------------------------------- helpers
 
 
-# =============================================================
-# Funciones auxiliares
-# =============================================================
-def get_colors(theme):
-    """Retorna colores de gráfica según el tema activo."""
-    if theme == 'dark':
+def filtered_data(band: str) -> np.ndarray:
+    """Registro filtrado en una banda, calculado una sola vez.
+
+    Parameters
+    ----------
+    band : str
+        Nombre de banda, o cualquier otra cosa para obtener la senal cruda.
+
+    Returns
+    -------
+    numpy.ndarray
+        Matriz ``(n_canales, n_muestras)``. Se devuelve el arreglo cacheado
+        sin copiar; quien lo reciba no debe modificarlo.
+    """
+    if RECORDING is None:
+        return np.empty((0, 0))
+    if band not in BANDS:
+        return RECORDING.data
+
+    cached = _FILTER_CACHE.get(band)
+    if cached is None:
+        import mne
+
+        low, high = BANDS[band]
+        logger.info("Filtrando banda %s (una sola vez)", band)
+        cached = mne.filter.filter_data(
+            RECORDING.data,
+            sfreq=RECORDING.sample_rate,
+            l_freq=low,
+            h_freq=high,
+            fir_design="firwin",
+            verbose="ERROR",
+        )
+        _FILTER_CACHE[band] = cached
+    return cached
+
+
+def graph_colors(theme: str) -> dict[str, str]:
+    """Paleta de la grafica segun el tema activo."""
+    if theme == "dark":
         return {
-            'bg': '#222', 'paper': '#222', 'font': '#fff',
-            'grid': 'rgba(255,255,255,0.08)',
-            'zero': 'rgba(255,255,255,0.2)',
+            "bg": "#222",
+            "font": "#fff",
+            "grid": "rgba(255,255,255,0.08)",
+            "zero": "rgba(255,255,255,0.25)",
         }
     return {
-        'bg': '#fff', 'paper': '#fff', 'font': '#212529',
-        'grid': 'rgba(0,0,0,0.06)',
-        'zero': 'rgba(0,0,0,0.15)',
+        "bg": "#fff",
+        "font": "#212529",
+        "grid": "rgba(0,0,0,0.06)",
+        "zero": "rgba(0,0,0,0.2)",
     }
 
 
-def symmetric_yrange(data, padding=1.1):
-    """Calcula un rango Y simétrico centrado en 0."""
-    if len(data) == 0:
-        return [-500, 500]
-    max_abs = max(abs(np.min(data)), abs(np.max(data)))
-    if max_abs == 0:
-        return [-100, 100]
-    return [-max_abs * padding, max_abs * padding]
+def symmetric_range(values: np.ndarray, padding: float = 1.1) -> list[float]:
+    """Rango vertical simetrico, para que el cero quede siempre al centro.
+
+    Un eje autoescalado deja el cero en cualquier lado y hace que dos
+    segmentos de la misma senal parezcan distintos; centrarlo vuelve
+    comparables dos momentos del registro.
+    """
+    if values.size == 0:
+        return [-500.0, 500.0]
+    limit = float(np.abs(values).max())
+    if limit == 0.0:
+        return [-100.0, 100.0]
+    return [-limit * padding, limit * padding]
 
 
-# =============================================================
-# Layout
-# =============================================================
-layout = html.Div(className='page-content', children=[
-    dbc.Row([
-        # --- Panel principal (izquierda) ---
-        dbc.Col(width=9, children=[
-            html.H2("Visualización EEG", className="section-title"),
+def empty_figure(theme: str, message: str) -> go.Figure:
+    """Figura vacia con un mensaje al centro."""
+    colors = graph_colors(theme)
+    figure = go.Figure()
+    figure.update_layout(
+        paper_bgcolor=colors["bg"],
+        plot_bgcolor=colors["bg"],
+        xaxis={"visible": False},
+        yaxis={"visible": False},
+        annotations=[
+            {
+                "text": message,
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 0.5,
+                "showarrow": False,
+                "font": {"size": 14, "color": colors["font"]},
+            }
+        ],
+        margin={"t": 20, "l": 20, "r": 20, "b": 20},
+    )
+    return figure
 
-            # Selector de rango de tiempo
-            html.Div(className="mb-2", children=[
-                dbc.Label(
-                    "Rango de tiempo (segundos):",
-                    style={"fontSize": "0.82rem", "fontWeight": "500"}
-                ),
-                dcc.RangeSlider(
-                    id='time-range-slider',
-                    min=0, max=MAX_DURATION, step=1,
-                    value=[0, 10],
-                    marks={
-                        i: f'{i}s'
-                        for i in range(
-                            0, MAX_DURATION + 1,
-                            max(30, int(MAX_DURATION / 5))
-                        )
-                    },
-                    tooltip={"placement": "bottom", "always_visible": False},
-                ),
-            ]),
 
-            # Controles de reproducción
-            html.Div(className="playback-controls mb-2", children=[
-                dbc.Button("▶ Play", id='btn-play', className='btn-play', size="sm"),
-                dbc.Button("■ Stop", id='btn-stop', className='btn-play-stop', size="sm"),
-                html.Span("Velocidad:", className="speed-label ms-2"),
-                dcc.Dropdown(
-                    id='playback-speed',
-                    options=[
-                        {'label': '0.5x', 'value': 0.25},
-                        {'label': '1x', 'value': 0.5},
-                        {'label': '2x', 'value': 1.0},
-                        {'label': '4x', 'value': 2.0},
-                    ],
-                    value=0.5, clearable=False,
-                    style={"width": "80px", "display": "inline-block"}
-                ),
-                html.Span(id='playback-status', className="speed-label ms-2"),
-            ]),
+# -------------------------------------------------------------------- layout
 
-            # Selector de modo de vista
-            dbc.RadioItems(
-                id='view-mode',
-                options=[
-                    {'label': '  Vista única', 'value': 'única'},
-                    {'label': '  Vista multicanal', 'value': 'multi'},
-                    {'label': '  Vista superpuesta', 'value': 'superpuesta'},
+
+def missing_data_panel() -> html.Div:
+    """Lo que ve quien clono el repositorio y todavia no genero los datos."""
+    return html.Div(
+        className="page-content",
+        children=[
+            html.H2("Visualizacion EEG", className="section-title"),
+            dbc.Alert(
+                color="warning",
+                className="mx-auto",
+                style={"maxWidth": "760px"},
+                children=[
+                    html.H5("Falta el registro de demostracion"),
+                    html.P(
+                        "Los datos no se versionan: se regeneran desde el "
+                        "dataset publico con un comando. El resto de la "
+                        "aplicacion funciona sin ellos."
+                    ),
+                    html.Pre(
+                        "uv run python tools/preparar_datos.py",
+                        className="bg-dark text-light p-2 rounded",
+                    ),
+                    html.P(
+                        "Ese script dice que descargar y donde ponerlo si "
+                        "todavia no tienes el archivo de origen. Al terminar, "
+                        "recarga esta pagina.",
+                        className="mb-0 small",
+                    ),
                 ],
-                value='única', inline=True, className="mb-2"
             ),
+        ],
+    )
 
-            # Controles de vista única (señal + filtro)
-            html.Div(id='filter-selector-container', children=[
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Label("Señal:", style={"fontSize": "0.8rem"}),
-                        dcc.Dropdown(
-                            id='signal-selector',
-                            options=[{'label': s, 'value': s} for s in signal_options],
-                            value=DEFAULT_SIGNAL,
-                        ),
-                    ], width=9),
-                    dbc.Col([
-                        dbc.Label("Filtro:", style={"fontSize": "0.8rem"}),
-                        dcc.Dropdown(
-                            id='filter-selector',
-                            options=[
-                                {'label': 'Sin filtro', 'value': 'none'},
-                                {'label': 'Delta (0.5–4 Hz)', 'value': 'delta'},
-                                {'label': 'Theta (4–8 Hz)', 'value': 'theta'},
-                                {'label': 'Alpha (8–12 Hz)', 'value': 'alpha'},
-                                {'label': 'Beta (12–30 Hz)', 'value': 'beta'},
-                                {'label': 'Gamma (30–50 Hz)', 'value': 'gamma'},
+
+def controls() -> html.Div:
+    """Panel izquierdo: rango, reproduccion, vista, canales."""
+    duration = int(RECORDING.duration_s)
+    step = max(30, duration // 5)
+    channels = list(RECORDING.channels)
+
+    return html.Div(
+        [
+            html.H2("Visualizacion EEG", className="section-title"),
+            dbc.Label(
+                "Rango de tiempo (segundos):",
+                style={"fontSize": "0.82rem", "fontWeight": "500"},
+            ),
+            dcc.RangeSlider(
+                id=IDS["range"],
+                min=0,
+                max=duration,
+                step=1,
+                value=[0, WINDOW_DEFAULT_S],
+                marks={i: f"{i}s" for i in range(0, duration + 1, step)},
+                tooltip={"placement": "bottom", "always_visible": False},
+            ),
+            html.Div(
+                className="playback-controls mb-2",
+                children=[
+                    dbc.Button(
+                        "Reproducir", id=IDS["play"], className="btn-play", size="sm"
+                    ),
+                    dbc.Button(
+                        "Detener", id=IDS["stop"], className="btn-play-stop", size="sm"
+                    ),
+                    html.Span("Velocidad:", className="speed-label ms-2"),
+                    dcc.Dropdown(
+                        id=IDS["speed"],
+                        options=[
+                            {"label": "0.5x", "value": 0.25},
+                            {"label": "1x", "value": 0.5},
+                            {"label": "2x", "value": 1.0},
+                            {"label": "4x", "value": 2.0},
+                        ],
+                        value=0.5,
+                        clearable=False,
+                        style={"width": "92px", "display": "inline-block"},
+                    ),
+                    html.Span(id=IDS["status"], className="speed-label ms-2"),
+                ],
+            ),
+            dbc.RadioItems(
+                id=IDS["view"],
+                options=[
+                    {"label": "  Vista unica", "value": "unica"},
+                    {"label": "  Vista multicanal", "value": "multi"},
+                    {"label": "  Vista superpuesta", "value": "superpuesta"},
+                ],
+                value="unica",
+                inline=True,
+                className="mb-2",
+            ),
+            html.Div(
+                id=IDS["signal_box"],
+                children=dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                dbc.Label("Canal:", style={"fontSize": "0.8rem"}),
+                                dcc.Dropdown(
+                                    id=IDS["signal"],
+                                    options=[
+                                        {"label": c, "value": c} for c in channels
+                                    ],
+                                    value=channels[0],
+                                    clearable=False,
+                                ),
                             ],
-                            value='none', clearable=False,
+                            width=8,
                         ),
-                    ], width=3),
-                ])
-            ]),
-
-            # Controles de vista multicanal/superpuesta
-            html.Div(id='channel-selector-container', children=[
-                dbc.Label("Canales:", style={"fontSize": "0.8rem"}),
-                dbc.Row([
-                    dbc.Col(
-                        dcc.Dropdown(
-                            id='channel-selector',
-                            options=[{'label': s, 'value': s} for s in signal_options],
-                            value=signal_options[:24],
-                            multi=True, searchable=True,
-                            placeholder="Selecciona canales...",
+                        dbc.Col(
+                            [
+                                dbc.Label("Filtro:", style={"fontSize": "0.8rem"}),
+                                dcc.Dropdown(
+                                    id=IDS["filter"],
+                                    options=[
+                                        {"label": "Sin filtro", "value": "none"},
+                                        {"label": "Delta (0.5-4 Hz)", "value": "delta"},
+                                        {"label": "Theta (4-8 Hz)", "value": "theta"},
+                                        {"label": "Alpha (8-12 Hz)", "value": "alpha"},
+                                        {"label": "Beta (12-30 Hz)", "value": "beta"},
+                                        {"label": "Gamma (30-50 Hz)", "value": "gamma"},
+                                    ],
+                                    value="none",
+                                    clearable=False,
+                                ),
+                            ],
+                            width=4,
                         ),
-                        width=10
-                    ),
-                    dbc.Col(
-                        dbc.ButtonGroup([
-                            dbc.Button(
-                                "Todo", id="select-all-channels",
-                                size="sm", className="btn-nd-primary"
+                    ]
+                ),
+            ),
+            html.Div(
+                id=IDS["channel_box"],
+                children=[
+                    dbc.Label("Canales:", style={"fontSize": "0.8rem"}),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dcc.Dropdown(
+                                    id=IDS["channels"],
+                                    options=[
+                                        {"label": c, "value": c} for c in channels
+                                    ],
+                                    value=channels[: min(8, len(channels))],
+                                    multi=True,
+                                    searchable=True,
+                                    placeholder="Selecciona canales...",
+                                ),
+                                width=9,
                             ),
-                            dbc.Button(
-                                "Ninguno", id="clear-channels",
-                                size="sm", className="btn-nd-danger"
+                            dbc.Col(
+                                dbc.ButtonGroup(
+                                    [
+                                        dbc.Button(
+                                            "Todos",
+                                            id=IDS["all"],
+                                            size="sm",
+                                            className="btn-nd-primary",
+                                        ),
+                                        dbc.Button(
+                                            "Ninguno",
+                                            id=IDS["none"],
+                                            size="sm",
+                                            className="btn-nd-danger",
+                                        ),
+                                    ]
+                                ),
+                                width=3,
+                                className="d-flex align-items-end justify-content-end",
                             ),
-                        ]),
-                        width=2,
-                        className="d-flex align-items-end justify-content-end"
+                        ]
                     ),
-                ])
-            ]),
-
-            # Gráfica EEG
+                ],
+            ),
             html.Div(
                 className="graph-container mt-2",
-                style={'height': 'calc(100vh - 320px)'},
-                children=[
-                    dcc.Graph(
-                        id='eeg-graph',
-                        style={'height': '100%', 'minHeight': '520px'}
-                    )
-                ]
-            ),
-        ]),
-
-        # --- Panel lateral derecho ---
-        dbc.Col(width=3, children=[
-            html.Div(id='edu-content-panel', className='edu-panel'),
-            html.Div(id='view-mode-info-panel', className='edu-panel'),
-            html.Hr(style={"borderColor": "var(--nd-border)"}),
-            dbc.Button(
-                "Jardín Mental", href="/jardin",
-                className="btn-nd-primary w-100 mb-2", size="sm"
-            ),
-            dbc.Button(
-                "Carrera Neural", href="/carrera",
-                className="btn-nd-primary w-100 mb-2", size="sm"
-            ),
-            # Decoración animada de neuronas
-            html.Div(className='neuron-decoration', style={"height": "250px"}),
-        ]),
-    ]),
-
-    # Intervalo para reproducción automática (deshabilitado por defecto)
-    dcc.Interval(
-        id='playback-interval', interval=500,
-        disabled=True, n_intervals=0
-    ),
-    dcc.Store(id='playback-state', data={'playing': False, 'position': 0}),
-])
-
-
-# =============================================================
-# Callbacks
-# =============================================================
-
-# Mostrar/ocultar controles según el modo de vista
-@dash.callback(
-    Output('filter-selector-container', 'style'),
-    Output('channel-selector-container', 'style'),
-    Input('view-mode', 'value')
-)
-def toggle_tools(view_mode):
-    if view_mode == 'única':
-        return {'display': 'block'}, {'display': 'none'}
-    return {'display': 'none'}, {'display': 'block'}
-
-
-# Botones de seleccionar todo / ninguno en canales
-@dash.callback(
-    Output('channel-selector', 'value'),
-    Input('select-all-channels', 'n_clicks'),
-    Input('clear-channels', 'n_clicks'),
-    prevent_initial_call=True
-)
-def update_channels(select_all, clear):
-    btn = callback_context.triggered[0]['prop_id'].split('.')[0]
-    return signal_options if btn == 'select-all-channels' else []
-
-
-# Actualizar panel educativo según filtro y modo de vista
-@dash.callback(
-    Output('edu-content-panel', 'children'),
-    Input('filter-selector', 'value'),
-    Input('view-mode', 'value')
-)
-def update_edu(filter_band, view_mode):
-    if view_mode != 'única':
-        return [
-            html.H6("Exploración multicanal"),
-            html.P(
-                "Cada canal con su propio color. Observa cómo diferentes "
-                "partes del cerebro se activan de manera distinta.",
-                style={"fontSize": "0.88rem"}
+                children=[dcc.Graph(id=IDS["graph"], style={"minHeight": "520px"})],
             ),
         ]
-    title, text = EDU.get(filter_band, EDU['none'])
-    return [
-        html.H6(title),
-        html.P(text, style={"fontSize": "0.88rem"}),
-    ]
+    )
 
 
-# Actualizar panel de información del modo de vista
+def sidebar() -> html.Div:
+    """Panel derecho: divulgacion y navegacion."""
+    return html.Div(
+        [
+            html.Div(id=IDS["edu"], className="edu-panel"),
+            html.Div(id=IDS["view_info"], className="edu-panel"),
+            html.Hr(style={"borderColor": "var(--nd-border)"}),
+            dbc.Button(
+                "Jardin Mental",
+                href="/jardin",
+                size="sm",
+                className="btn-nd-primary w-100 mb-2",
+            ),
+            dbc.Button(
+                "Carrera Neural",
+                href="/carrera",
+                size="sm",
+                className="btn-nd-primary w-100 mb-2",
+            ),
+            html.Div(className="neuron-decoration", style={"height": "220px"}),
+        ]
+    )
+
+
+def layout() -> html.Div:
+    """Layout de la pagina.
+
+    Es una funcion y no una variable para que Dash la evalue en cada visita:
+    asi, tras correr el script de preparacion, basta recargar el navegador
+    en lugar de reiniciar el servidor.
+    """
+    if RECORDING is None:
+        return missing_data_panel()
+
+    return html.Div(
+        className="page-content",
+        children=[
+            dbc.Row(
+                [
+                    dbc.Col(controls(), width=9),
+                    dbc.Col(sidebar(), width=3),
+                ]
+            ),
+            dcc.Interval(id=IDS["tick"], interval=PLAYBACK_BASE_MS, disabled=True),
+            dcc.Store(id=IDS["state"], data={"playing": False}),
+        ],
+    )
+
+
+# ------------------------------------------------------------------ callbacks
+
+
 @dash.callback(
-    Output('view-mode-info-panel', 'children'),
-    Input('view-mode', 'value')
+    Output(IDS["signal_box"], "style"),
+    Output(IDS["channel_box"], "style"),
+    Input(IDS["view"], "value"),
 )
-def update_view_info(view_mode):
-    title, text = VINFO.get(view_mode, VINFO['única'])
-    return [
-        html.H6(title),
-        html.P(text, style={"fontSize": "0.88rem"}),
-    ]
+def toggle_controls(view: str):
+    """Muestra el selector que corresponde al modo de vista."""
+    single = {"display": "block"}, {"display": "none"}
+    multi = {"display": "none"}, {"display": "block"}
+    return single if view == "unica" else multi
 
 
-# Controlar reproducción automática (Play/Stop)
 @dash.callback(
-    Output('playback-interval', 'disabled'),
-    Output('playback-interval', 'interval'),
-    Output('playback-status', 'children'),
-    Output('playback-state', 'data'),
-    Input('btn-play', 'n_clicks'),
-    Input('btn-stop', 'n_clicks'),
-    State('playback-speed', 'value'),
-    State('time-range-slider', 'value'),
-    State('playback-state', 'data'),
-    prevent_initial_call=True
+    Output(IDS["channels"], "value"),
+    Input(IDS["all"], "n_clicks"),
+    Input(IDS["none"], "n_clicks"),
+    prevent_initial_call=True,
 )
-def control_playback(play_clicks, stop_clicks, speed, slider_range, state):
-    triggered = callback_context.triggered[0]['prop_id'].split('.')[0]
-    if triggered == 'btn-play':
-        window = slider_range[1] - slider_range[0]
-        interval_ms = int(500 / (speed / 0.5))
-        return (
-            False, interval_ms, "▶ Reproduciendo...",
-            {'playing': True, 'position': slider_range[0], 'window': window}
-        )
-    return True, 500, "", {'playing': False, 'position': 0, 'window': 10}
-
-
-# Avanzar la ventana de tiempo durante reproducción (con loop)
-@dash.callback(
-    Output('time-range-slider', 'value'),
-    Input('playback-interval', 'n_intervals'),
-    State('playback-state', 'data'),
-    State('playback-speed', 'value'),
-    State('time-range-slider', 'value'),
-    prevent_initial_call=True
-)
-def advance_playback(n_intervals, state, speed, current_range):
-    if not state or not state.get('playing'):
+def select_channels(_all_clicks, _none_clicks):
+    if RECORDING is None:
         return no_update
-    window = current_range[1] - current_range[0]
-    new_start = current_range[0] + speed
-    # Loop: volver al inicio al llegar al final
-    if new_start + window >= MAX_DURATION:
-        new_start = 0
-    return [new_start, new_start + window]
+    triggered = callback_context.triggered[0]["prop_id"].split(".")[0]
+    return list(RECORDING.channels) if triggered == IDS["all"] else []
 
 
-# Actualizar la gráfica EEG principal
 @dash.callback(
-    Output('eeg-graph', 'figure'),
-    Input('signal-selector', 'value'),
-    Input('time-range-slider', 'value'),
-    Input('view-mode', 'value'),
-    Input('theme-store', 'data'),
-    Input('filter-selector', 'value'),
-    Input('channel-selector', 'value')
+    Output(IDS["edu"], "children"),
+    Input(IDS["filter"], "value"),
+    Input(IDS["view"], "value"),
 )
-def update_graph(signal, time_range, view_mode, theme, filter_band, channels):
-    c = get_colors(theme)
-    start, end = time_range
-    start_idx = int(start * SAMPLE_RATE)
-    end_idx = int(end * SAMPLE_RATE)
-
-    # --- Vista única ---
-    if view_mode == 'única':
-        raw_filtered = raw.copy()
-        if filter_band in BANDS:
-            raw_filtered.filter(
-                *BANDS[filter_band],
-                fir_design='firwin', verbose='ERROR'
-            )
-        ch_idx = raw.ch_names.index(signal)
-        data_arr, times = raw_filtered[ch_idx, start_idx:end_idx]
-        times = times.flatten()
-        y = data_arr[0]
-
-        return go.Figure(
-            data=[go.Scatter(x=times, y=y, mode='lines', line=dict(width=1.2))],
-            layout=go.Layout(
-                title=dict(text=signal, font=dict(size=13)),
-                xaxis=dict(
-                    title='Tiempo (s)',
-                    gridcolor=c['grid'], zeroline=False
-                ),
-                yaxis=dict(
-                    title='Amplitud (µV)',
-                    gridcolor=c['grid'],
-                    range=symmetric_yrange(y),
-                    zeroline=True,
-                    zerolinecolor=c['zero'], zerolinewidth=1.5
-                ),
-                font=dict(family="Outfit", color=c['font'], size=11),
-                height=650,
-                paper_bgcolor=c['paper'], plot_bgcolor=c['bg'],
-                margin=dict(t=35, l=60, r=20, b=50),
-            )
+def update_edu(band: str, view: str):
+    """Texto divulgativo, en funcion del filtro y del modo."""
+    if view != "unica":
+        title = "Exploracion multicanal"
+        text = (
+            "Cada canal lleva su propio color. Fijate en como distintas partes "
+            "del cerebro se activan de manera diferente en el mismo instante; "
+            "esa distribucion espacial es la mitad de la informacion que un "
+            "neurologo lee en un EEG."
         )
-
-    # --- Vista multicanal ---
-    elif view_mode == 'multi':
-        selected = channels if channels else [DEFAULT_SIGNAL]
-        picks = [raw.ch_names.index(ch) for ch in selected]
-        data_arr, times = raw[picks, start_idx:end_idx]
-        times = times.flatten()
-
-        step = 1.0 / len(selected)
-        height = max(650, len(selected) * 50)
-        layout_fig = go.Layout(
-            showlegend=False,
-            paper_bgcolor=c['paper'], plot_bgcolor=c['bg'],
-            autosize=False, height=height,
-            margin=dict(t=35, l=60, r=20, b=35),
-            xaxis=dict(
-                title='Tiempo (s)', side='top',
-                showgrid=True, gridcolor=c['grid'],
-                zeroline=False, color=c['font']
-            ),
-        )
-
-        traces = []
-        annotations = []
-        for ii, ch in enumerate(selected):
-            domain = [1 - (ii + 1) * step, 1 - ii * step]
-            axis_id = '' if ii == 0 else str(ii + 1)
-
-            # Crear eje Y individual para cada canal
-            layout_fig[f'yaxis{axis_id}'] = go.layout.YAxis(
-                domain=domain, showticklabels=False,
-                zeroline=True, zerolinecolor=c['zero'],
-                zerolinewidth=0.5, gridcolor=c['grid']
-            )
-            traces.append(go.Scatter(
-                x=times, y=data_arr[ii],
-                yaxis=f'y{axis_id}',
-                mode='lines', line=dict(width=0.8)
-            ))
-            annotations.append(go.layout.Annotation(
-                x=-0.06, y=sum(domain) / 2,
-                xref='paper', yref=f'y{axis_id}',
-                text=ch, showarrow=False,
-                font=dict(size=9, color=c['font'])
-            ))
-
-        layout_fig.annotations = annotations
-        layout_fig.font = dict(family="Outfit", color=c['font'], size=11)
-        return go.Figure(data=traces, layout=layout_fig)
-
-    # --- Vista superpuesta ---
     else:
-        selected = channels if channels else [DEFAULT_SIGNAL]
-        picks = [raw.ch_names.index(ch) for ch in selected]
-        data_arr, times = raw[picks, start_idx:end_idx]
-        times = times.flatten()
+        title, text = EDU.get(band, EDU["none"])
+    return [html.H6(title), html.P(text, style={"fontSize": "0.88rem"})]
 
-        fig = go.Figure()
-        for i, ch in enumerate(selected):
-            fig.add_trace(go.Scatter(
-                x=times, y=data_arr[i],
-                name=ch, mode='lines', line=dict(width=1)
-            ))
 
-        fig.update_layout(
-            title=dict(text="Señales superpuestas", font=dict(size=13)),
-            xaxis_title="Tiempo (s)",
-            yaxis_title="Amplitud (µV)",
-            yaxis=dict(
-                range=symmetric_yrange(data_arr.flatten()),
-                zeroline=True,
-                zerolinecolor=c['zero'], zerolinewidth=1.5
-            ),
-            paper_bgcolor=c['paper'], plot_bgcolor=c['bg'],
-            font=dict(family="Outfit", color=c['font'], size=11),
-            height=650,
-            margin=dict(t=35, l=60, r=20, b=50),
+@dash.callback(Output(IDS["view_info"], "children"), Input(IDS["view"], "value"))
+def update_view_info(view: str):
+    title, text = VIEW_INFO.get(view, VIEW_INFO["unica"])
+    return [html.H6(title), html.P(text, style={"fontSize": "0.88rem"})]
+
+
+@dash.callback(
+    Output(IDS["tick"], "disabled"),
+    Output(IDS["tick"], "interval"),
+    Output(IDS["status"], "children"),
+    Output(IDS["state"], "data"),
+    Input(IDS["play"], "n_clicks"),
+    Input(IDS["stop"], "n_clicks"),
+    State(IDS["speed"], "value"),
+    prevent_initial_call=True,
+)
+def control_playback(_play, _stop, speed: float):
+    """Enciende o apaga la reproduccion."""
+    triggered = callback_context.triggered[0]["prop_id"].split(".")[0]
+    if triggered == IDS["play"]:
+        interval = int(PLAYBACK_BASE_MS / (speed / 0.5))
+        return False, interval, "Reproduciendo", {"playing": True}
+    return True, PLAYBACK_BASE_MS, "", {"playing": False}
+
+
+@dash.callback(
+    Output(IDS["range"], "value"),
+    Input(IDS["tick"], "n_intervals"),
+    State(IDS["state"], "data"),
+    State(IDS["speed"], "value"),
+    State(IDS["range"], "value"),
+    prevent_initial_call=True,
+)
+def advance_window(_ticks, state: dict, speed: float, window: list[float]):
+    """Desplaza la ventana y vuelve al inicio al llegar al final."""
+    if RECORDING is None or not state or not state.get("playing"):
+        return no_update
+
+    width = window[1] - window[0]
+    start = window[0] + speed
+    if start + width >= RECORDING.duration_s:
+        start = 0.0
+    return [start, start + width]
+
+
+@dash.callback(
+    Output(IDS["graph"], "figure"),
+    Input(IDS["signal"], "value"),
+    Input(IDS["range"], "value"),
+    Input(IDS["view"], "value"),
+    Input(IDS["filter"], "value"),
+    Input(IDS["channels"], "value"),
+    Input("theme-store", "data"),
+)
+def draw(signal, window, view, band, channels, theme):
+    """Dibuja la figura correspondiente al modo de vista activo."""
+    if RECORDING is None:
+        return empty_figure(theme or "dark", "Sin registro cargado")
+
+    colors = graph_colors(theme or "dark")
+    start, end = window
+    data = filtered_data(band if view == "unica" else "none")
+
+    sample_start = max(0, int(start * RECORDING.sample_rate))
+    sample_end = min(RECORDING.n_samples, int(end * RECORDING.sample_rate))
+    if sample_end <= sample_start:
+        return empty_figure(theme or "dark", "Ventana vacia")
+    times = np.arange(sample_start, sample_end) / RECORDING.sample_rate
+
+    if view == "unica":
+        return _single(signal, data, times, sample_start, sample_end, colors)
+
+    selected = channels or []
+    if not selected:
+        return empty_figure(theme or "dark", "Selecciona al menos un canal")
+    if view == "multi":
+        return _stacked(selected, data, times, sample_start, sample_end, colors)
+    return _overlaid(selected, data, times, sample_start, sample_end, colors)
+
+
+def _single(signal, data, times, start, end, colors) -> go.Figure:
+    """Un canal, con el cero centrado."""
+    try:
+        index = RECORDING.index_of(signal)
+    except KeyError:
+        return empty_figure("dark", f"Canal desconocido: {signal}")
+
+    values = data[index, start:end]
+    return go.Figure(
+        data=[go.Scatter(x=times, y=values, mode="lines", line={"width": 1.2})],
+        layout=go.Layout(
+            title={"text": signal, "font": {"size": 13}},
+            xaxis={
+                "title": "Tiempo (s)",
+                "gridcolor": colors["grid"],
+                "zeroline": False,
+            },
+            yaxis={
+                "title": "Amplitud (uV)",
+                "gridcolor": colors["grid"],
+                "range": symmetric_range(values),
+                "zeroline": True,
+                "zerolinecolor": colors["zero"],
+                "zerolinewidth": 1.5,
+            },
+            font={"family": "Outfit", "color": colors["font"], "size": 11},
+            paper_bgcolor=colors["bg"],
+            plot_bgcolor=colors["bg"],
+            height=620,
+            margin={"t": 36, "l": 62, "r": 20, "b": 48},
+        ),
+    )
+
+
+def _stacked(selected, data, times, start, end, colors) -> go.Figure:
+    """Montaje vertical, un eje por canal."""
+    indices = [RECORDING.index_of(c) for c in selected if c in RECORDING.channels]
+    step = 1.0 / len(indices)
+
+    layout = go.Layout(
+        showlegend=False,
+        paper_bgcolor=colors["bg"],
+        plot_bgcolor=colors["bg"],
+        autosize=False,
+        height=max(620, len(indices) * 52),
+        margin={"t": 36, "l": 62, "r": 20, "b": 36},
+        xaxis={
+            "title": "Tiempo (s)",
+            "side": "top",
+            "gridcolor": colors["grid"],
+            "zeroline": False,
+            "color": colors["font"],
+        },
+    )
+
+    traces, annotations = [], []
+    for position, index in enumerate(indices):
+        domain = [1 - (position + 1) * step, 1 - position * step]
+        axis = "" if position == 0 else str(position + 1)
+        layout[f"yaxis{axis}"] = go.layout.YAxis(
+            domain=domain,
+            showticklabels=False,
+            zeroline=True,
+            zerolinecolor=colors["zero"],
+            zerolinewidth=0.5,
+            gridcolor=colors["grid"],
         )
-        return fig
+        traces.append(
+            go.Scatter(
+                x=times,
+                y=data[index, start:end],
+                yaxis=f"y{axis}",
+                mode="lines",
+                line={"width": 0.8},
+            )
+        )
+        annotations.append(
+            go.layout.Annotation(
+                x=-0.055,
+                y=sum(domain) / 2,
+                xref="paper",
+                yref=f"y{axis}",
+                text=RECORDING.channels[index],
+                showarrow=False,
+                font={"size": 9, "color": colors["font"]},
+            )
+        )
+
+    layout.annotations = annotations
+    layout.font = {"family": "Outfit", "color": colors["font"], "size": 11}
+    return go.Figure(data=traces, layout=layout)
+
+
+def _overlaid(selected, data, times, start, end, colors) -> go.Figure:
+    """Todos los canales sobre el mismo eje."""
+    indices = [RECORDING.index_of(c) for c in selected if c in RECORDING.channels]
+    block = data[indices, start:end]
+
+    figure = go.Figure()
+    for row, index in enumerate(indices):
+        figure.add_trace(
+            go.Scatter(
+                x=times,
+                y=block[row],
+                name=RECORDING.channels[index],
+                mode="lines",
+                line={"width": 1},
+            )
+        )
+
+    figure.update_layout(
+        title={"text": "Senales superpuestas", "font": {"size": 13}},
+        xaxis_title="Tiempo (s)",
+        yaxis_title="Amplitud (uV)",
+        yaxis={
+            "range": symmetric_range(block),
+            "zeroline": True,
+            "zerolinecolor": colors["zero"],
+            "zerolinewidth": 1.5,
+        },
+        paper_bgcolor=colors["bg"],
+        plot_bgcolor=colors["bg"],
+        font={"family": "Outfit", "color": colors["font"], "size": 11},
+        height=620,
+        margin={"t": 36, "l": 62, "r": 20, "b": 48},
+    )
+    return figure
