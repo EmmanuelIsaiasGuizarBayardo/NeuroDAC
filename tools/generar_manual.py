@@ -15,14 +15,12 @@ produciría el generador. Lo usa el CI para detectar ediciones a mano.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from neurodac.acquisition import SIGNAL_TYPES, SignalState
 from neurodac.content import content
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 OUTPUT = REPO_ROOT / "docs" / "manual-operador.md"
 
@@ -183,10 +181,7 @@ def main(argv: list[str] | None = None) -> int:
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(generated, encoding="utf-8")
-    print(
-        f"Escrito {OUTPUT.relative_to(REPO_ROOT)}  "
-        f"({len(generated.splitlines())} líneas)"
-    )
+    print(f"Escrito {OUTPUT.relative_to(REPO_ROOT)}  ({len(generated.splitlines())} líneas)")
     return 0
 
 

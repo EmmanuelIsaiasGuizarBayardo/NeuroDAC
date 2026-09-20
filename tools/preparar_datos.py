@@ -13,18 +13,14 @@ lugar de fallar con un rastro de pila.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from neurodac.eeg_io import DEFAULT_DEMO_NAME, read_eeglab, write_csv
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 DATASET_ID = "ds002778"
-DATASET_NAME = (
-    "UC San Diego Resting State EEG Data from Patients with Parkinson's Disease"
-)
+DATASET_NAME = "UC San Diego Resting State EEG Data from Patients with Parkinson's Disease"
 DATASET_URL = f"https://openneuro.org/datasets/{DATASET_ID}/versions/1.0.2"
 DATASET_LICENSE = "CC0"
 
