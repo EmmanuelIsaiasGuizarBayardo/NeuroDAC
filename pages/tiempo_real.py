@@ -13,6 +13,7 @@ import plotly.graph_objs as go
 from dash import Input, Output, State, dcc, html, no_update
 
 from neurodac.acquisition import registry, validate_signal_type
+from neurodac.content import signal as signal_text
 from neurodac.simulator import SimulatedSource
 from neurodac.ui import PanelIds, connection_panel, render_quality
 
@@ -22,21 +23,6 @@ IDS = PanelIds("rt")
 
 #: Clave con la que la sesion simulada queda en el registro.
 SIM_NAME = "simulada"
-
-SIGNAL_INFO = {
-    "raw": "Senal cruda del electrodo; mezcla de todas las frecuencias cerebrales.",
-    "attention": "Indice propietario de NeuroSky (0-100) que estima la concentracion.",
-    "meditation": "Indice propietario (0-100) que refleja relajacion y calma mental.",
-    "blink": "Detecta artefactos de parpadeo; util para interfaces BCI basadas en EOG.",
-    "delta": "Potencia en banda delta (0.5-4 Hz); sueno profundo.",
-    "theta": "Potencia en banda theta (4-8 Hz); meditacion y memoria.",
-    "low-alpha": "Alpha baja (8-10 Hz); relajacion cortical temprana.",
-    "high-alpha": "Alpha alta (10-12 Hz); relajacion cortical profunda.",
-    "low-beta": "Beta baja (12-18 Hz); ritmo sensoriomotor (SMR).",
-    "high-beta": "Beta alta (18-30 Hz); actividad mental intensa.",
-    "low-gamma": "Gamma baja (30-40 Hz); procesamiento cognitivo.",
-    "mid-gamma": "Gamma media (40-50 Hz); binding perceptual.",
-}
 
 #: Rangos fijos donde el protocolo los define; el resto se deja automatico.
 Y_RANGES = {"raw": [-2048, 2048], "attention": [0, 100], "meditation": [0, 100]}
@@ -139,7 +125,7 @@ def toggle_port_input(source_kind: str):
 def update_signal_info(signal_type: str):
     return [
         html.H6(signal_type.capitalize()),
-        html.P(SIGNAL_INFO.get(signal_type, ""), style={"fontSize": "0.88rem"}),
+        html.P(signal_text(signal_type), style={"fontSize": "0.88rem"}),
     ]
 
 

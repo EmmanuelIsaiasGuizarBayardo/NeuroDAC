@@ -14,6 +14,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from .acquisition import SIGNAL_TYPES, Quality, SignalState
+from .content import state as state_text
 
 __all__ = [
     "STATE_STYLES",
@@ -48,41 +49,26 @@ class StateStyle:
     hint: str
 
 
+#: El color es presentacion y vive en el codigo; la etiqueta y la instruccion
+#: son contenido y vienen de content/divulgacion.es.json.
+STATE_CSS: dict[SignalState, str] = {
+    SignalState.DISCONNECTED: "disconnected",
+    SignalState.NO_DATA: "danger",
+    SignalState.NO_CONTACT: "danger",
+    SignalState.POOR_CONTACT: "warning",
+    SignalState.CALIBRATING: "info",
+    SignalState.READY: "connected",
+}
+
+
+def _style_for(signal_state: SignalState) -> StateStyle:
+    """Arma el estilo de un estado juntando color y texto."""
+    label, hint = state_text(str(signal_state))
+    return StateStyle(label, STATE_CSS[signal_state], hint)
+
+
 STATE_STYLES: dict[SignalState, StateStyle] = {
-    SignalState.DISCONNECTED: StateStyle(
-        "Desconectada",
-        "disconnected",
-        "Elige la fuente y presiona Conectar.",
-    ),
-    SignalState.NO_DATA: StateStyle(
-        "Sin datos",
-        "danger",
-        "El puerto esta abierto pero no llegan tramas. "
-        "Revisa que la diadema siga encendida y emparejada.",
-    ),
-    SignalState.NO_CONTACT: StateStyle(
-        "Sin contacto",
-        "danger",
-        "El electrodo frontal no toca la piel. Acomoda la diadema en la frente "
-        "y verifica el clip de la oreja.",
-    ),
-    SignalState.POOR_CONTACT: StateStyle(
-        "Contacto pobre",
-        "warning",
-        "Hay contacto pero con ruido. Aparta el cabello de la frente y "
-        "revisa que el clip haga contacto con el lobulo.",
-    ),
-    SignalState.CALIBRATING: StateStyle(
-        "Calibrando",
-        "info",
-        "La diadema esta estableciendo su linea base. Pide al visitante que "
-        "se quede quieto unos segundos.",
-    ),
-    SignalState.READY: StateStyle(
-        "Lista",
-        "connected",
-        "Senal estable.",
-    ),
+    signal_state: _style_for(signal_state) for signal_state in SignalState
 }
 
 

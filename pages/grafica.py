@@ -22,6 +22,7 @@ import numpy as np
 import plotly.graph_objs as go
 from dash import Input, Output, State, callback_context, dcc, html, no_update
 
+from neurodac.content import band, view
 from neurodac.eeg_io import Recording, load_demo
 
 logger = logging.getLogger(__name__)
@@ -74,92 +75,6 @@ IDS = {
 }
 
 # --------------------------------------------------------------- divulgacion
-
-EDU: dict[str, tuple[str, str]] = {
-    "none": (
-        "Senal EEG sin procesar",
-        (
-            "Lo que ves aqui es la actividad electrica de un cerebro tal cual la "
-            "capta el electrodo. Es como escuchar todas las conversaciones de un "
-            "salon al mismo tiempo; una mezcla de muchas frecuencias distintas. "
-            "Los picos grandes suelen ser artefactos, como parpadeos o movimientos "
-            "musculares, y no actividad cerebral real."
-        ),
-    ),
-    "delta": (
-        "Ondas Delta, las mas lentas",
-        (
-            "Las ondas delta son como el latido profundo del cerebro dormido. "
-            "Aparecen durante el sueno profundo, cuando el cuerpo se dedica a "
-            "repararse. Si las vemos en alguien despierto podria indicar que algo "
-            "no anda bien; por eso los neurologos les prestan mucha atencion."
-        ),
-    ),
-    "theta": (
-        "Ondas Theta, sonar despierto",
-        (
-            "Theta es la frecuencia de la creatividad y la ensonacion. Aparece "
-            "cuando la mente divaga, durante la meditacion profunda, o justo antes "
-            "de quedarse dormido. El hipocampo, la region encargada de formar "
-            "memorias, usa este ritmo para consolidar lo aprendido durante el dia."
-        ),
-    ),
-    "alpha": (
-        "Ondas Alpha, relajacion consciente",
-        (
-            "Fueron las primeras que se descubrieron en el EEG, en 1929. Aparecen "
-            "al cerrar los ojos y relajarse; es como si la corteza visual dijera "
-            "que no hay nada que ver y conviniera descansar. Al abrir los ojos o "
-            "ponerse a pensar desaparecen de inmediato, y por eso se usan tanto en "
-            "neurofeedback para ensenar a relajarse."
-        ),
-    ),
-    "beta": (
-        "Ondas Beta, pensamiento activo",
-        (
-            "Beta es la frecuencia del cerebro concentrado. Al resolver un problema "
-            "de matematicas, leer con atencion o sostener una conversacion, el "
-            "cerebro vibra en beta. Hay dos tipos: beta baja, de concentracion "
-            "calmada, y beta alta, ligada al estres. En las interfaces "
-            "cerebro-computadora es la banda clave para detectar intenciones de "
-            "movimiento."
-        ),
-    ),
-    "gamma": (
-        "Ondas Gamma, el pegamento de la conciencia",
-        (
-            "Gamma es la mas rapida y la mas misteriosa. Se cree que es "
-            "responsable de pegar toda la informacion sensorial en una experiencia "
-            "unificada. Cuando ves un gato, gamma une su forma, color, sonido y "
-            "textura en un solo percepto. Es dificil de medir porque los musculos "
-            "de la cara generan senales parecidas."
-        ),
-    ),
-}
-
-VIEW_INFO: dict[str, tuple[str, str]] = {
-    "unica": (
-        "Vista unica",
-        (
-            "Un solo canal. Sirve para examinar la forma de la senal en detalle o "
-            "para aislar una banda de frecuencia con los filtros."
-        ),
-    ),
-    "multi": (
-        "Vista multicanal",
-        (
-            "Montaje vertical, como en un electroencefalografo clinico. Cada canal "
-            "con su color, para distinguir que hacen las distintas regiones."
-        ),
-    ),
-    "superpuesta": (
-        "Vista superpuesta",
-        (
-            "Todas las senales sobre el mismo eje. Util para comparar amplitudes; "
-            "se recomienda con dos a cuatro canales."
-        ),
-    ),
-}
 
 
 # ------------------------------------------------------------------- helpers
@@ -526,25 +441,16 @@ def select_channels(_all_clicks, _none_clicks):
     Input(IDS["filter"], "value"),
     Input(IDS["view"], "value"),
 )
-def update_edu(band: str, view: str):
+def update_edu(band_key: str, view_mode: str):
     """Texto divulgativo, en funcion del filtro y del modo."""
-    if view != "unica":
-        title = "Exploracion multicanal"
-        text = (
-            "Cada canal lleva su propio color. Fijate en como distintas partes "
-            "del cerebro se activan de manera diferente en el mismo instante; "
-            "esa distribucion espacial es la mitad de la informacion que un "
-            "neurologo lee en un EEG."
-        )
-    else:
-        title, text = EDU.get(band, EDU["none"])
-    return [html.H6(title), html.P(text, style={"fontSize": "0.88rem"})]
+    entry = band("multicanal" if view_mode != "unica" else band_key or "none")
+    return [html.H6(entry.title), html.P(entry.body, style={"fontSize": "0.88rem"})]
 
 
 @dash.callback(Output(IDS["view_info"], "children"), Input(IDS["view"], "value"))
-def update_view_info(view: str):
-    title, text = VIEW_INFO.get(view, VIEW_INFO["unica"])
-    return [html.H6(title), html.P(text, style={"fontSize": "0.88rem"})]
+def update_view_info(view_mode: str):
+    entry = view(view_mode or "unica")
+    return [html.H6(entry.title), html.P(entry.body, style={"fontSize": "0.88rem"})]
 
 
 @dash.callback(
