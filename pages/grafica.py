@@ -223,6 +223,13 @@ def controls() -> html.Div:
                 "Rango de tiempo (segundos):",
                 style={"fontSize": "0.82rem", "fontWeight": "500"},
             ),
+            # Saber que archivo se esta viendo evita la confusion de mirar un
+            # registro distinto del que se cree.
+            html.Div(
+                f"Registro: {Path(RECORDING.source).name} · "
+                f"{RECORDING.n_channels} canales · {RECORDING.sample_rate:.0f} Hz",
+                className="nd-hint mb-1",
+            ),
             dcc.RangeSlider(
                 id=IDS["range"],
                 min=0,

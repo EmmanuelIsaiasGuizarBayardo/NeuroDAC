@@ -287,25 +287,24 @@ def _infer_sample_rate(frame, time_column: str | None) -> float:
 
 
 def find_demo_csv(data_dir: str | Path) -> Path | None:
-    """Busca el CSV de demostracion dentro del directorio de datos.
+    """Busca el CSV de demostracion en `processed/`.
 
-    Se prefiere el nombre canonico; si no aparece, cualquier CSV de
-    `processed/`, y en ultima instancia cualquiera del directorio.
+    Se limita a ese subdirectorio y no mira la raiz de `data/` a proposito.
+    `data/` no se versiona, asi que suele acumular archivos sueltos; cargar
+    cualquiera de ellos lleva a mirar una senal distinta de la que se cree, y
+    en el peor caso a mostrar en publico un registro personal que solo estaba
+    ahi de paso.
     """
-    data_dir = Path(data_dir)
-    if not data_dir.is_dir():
+    processed = Path(data_dir) / "processed"
+    if not processed.is_dir():
         return None
 
-    canonical = data_dir / "processed" / DEFAULT_DEMO_NAME
+    canonical = processed / DEFAULT_DEMO_NAME
     if canonical.is_file():
         return canonical
 
-    for candidate in (data_dir / "processed", data_dir):
-        if candidate.is_dir():
-            found = sorted(candidate.glob("*.csv"))
-            if found:
-                return found[0]
-    return None
+    found = sorted(processed.glob("*.csv"))
+    return found[0] if found else None
 
 
 def load_demo(data_dir: str | Path) -> Recording | None:

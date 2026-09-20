@@ -220,3 +220,25 @@ class TestNoContentLeftInCode(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestManualIsGenerated(unittest.TestCase):
+    """El manual es artefacto generado y no debe editarse a mano."""
+
+    ROOT = Path(__file__).resolve().parent.parent
+
+    def test_manual_matches_the_content_file(self):
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, str(self.ROOT / "tools" / "generar_manual.py"), "--check"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"el manual esta desactualizado:\n{result.stdout}{result.stderr}",
+        )

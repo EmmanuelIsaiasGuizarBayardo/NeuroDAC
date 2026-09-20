@@ -6,61 +6,61 @@
   "nota": "Unica fuente del texto que ve el publico. La interfaz no contiene texto de contenido; el manual del operador se genera desde aqui. El asterisco marca enfasis: *asi*.",
   "bandas": {
     "none": {
-      "titulo": "Senal EEG sin procesar",
-      "texto": "Lo que ves aqui es la actividad electrica de un cerebro tal cual la capta el electrodo. Es como escuchar todas las conversaciones de un salon al mismo tiempo; una mezcla de muchas frecuencias distintas. Los picos grandes suelen ser artefactos, como parpadeos o movimientos musculares, y no actividad cerebral real."
+      "titulo": "Señal EEG sin procesar",
+      "texto": "Lo que ves aquí es la actividad eléctrica de un cerebro tal cual la capta el electrodo. Es como escuchar todas las conversaciones de un salón al mismo tiempo; una mezcla de muchas frecuencias distintas. Los picos grandes suelen ser artefactos, como parpadeos o movimientos musculares, y no actividad cerebral real."
     },
     "delta": {
-      "titulo": "Ondas Delta, las mas lentas",
-      "texto": "Las ondas delta son como el latido profundo del cerebro dormido. Aparecen durante el sueno profundo, cuando el cuerpo se dedica a repararse. Si las vemos en alguien despierto podria indicar que algo no anda bien; por eso los neurologos les prestan mucha atencion."
+      "titulo": "Ondas Delta, las más lentas",
+      "texto": "Las ondas delta son como el latido profundo del cerebro dormido. Aparecen durante el sueño profundo, cuando el cuerpo se dedica a repararse. Si las vemos en alguien despierto podría indicar que algo no anda bien; por eso los neurólogos les prestan mucha atención."
     },
     "theta": {
-      "titulo": "Ondas Theta, sonar despierto",
-      "texto": "Theta es la frecuencia de la creatividad y la ensonacion. Aparece cuando la mente divaga, durante la meditacion profunda, o justo antes de quedarse dormido. El hipocampo, la region encargada de formar memorias, usa este ritmo para consolidar lo aprendido durante el dia."
+      "titulo": "Ondas Theta, soñar despierto",
+      "texto": "Theta es la frecuencia de la creatividad y la ensoñación. Aparece cuando la mente divaga, durante la meditación profunda, o justo antes de quedarse dormido. El hipocampo, la región encargada de formar memorias, usa este ritmo para consolidar lo aprendido durante el día."
     },
     "alpha": {
-      "titulo": "Ondas Alpha, relajacion consciente",
-      "texto": "Fueron las primeras que se descubrieron en el EEG, en 1929. Aparecen al cerrar los ojos y relajarse; es como si la corteza visual dijera que no hay nada que ver y conviniera descansar. Al abrir los ojos o ponerse a pensar desaparecen de inmediato, y por eso se usan tanto en neurofeedback para ensenar a relajarse."
+      "titulo": "Ondas Alpha, relajación consciente",
+      "texto": "Fueron las primeras que se descubrieron en el EEG, en 1929. Aparecen al cerrar los ojos y relajarse; es como si la corteza visual dijera que no hay nada que ver y conviniera descansar. Al abrir los ojos o ponerse a pensar desaparecen de inmediato, y por eso se usan tanto en neurofeedback para enseñar a relajarse."
     },
     "beta": {
       "titulo": "Ondas Beta, pensamiento activo",
-      "texto": "Beta es la frecuencia del cerebro concentrado. Al resolver un problema de matematicas, leer con atencion o sostener una conversacion, el cerebro vibra en beta. Hay dos tipos: beta baja, de concentracion calmada, y beta alta, ligada al estres. En las interfaces cerebro-computadora es la banda clave para detectar intenciones de movimiento."
+      "texto": "Beta es la frecuencia del cerebro concentrado. Al resolver un problema de matemáticas, leer con atención o sostener una conversación, el cerebro vibra en beta. Hay dos tipos: beta baja, de concentración calmada, y beta alta, ligada al estrés. En las interfaces cerebro-computadora es la banda clave para detectar intenciones de movimiento."
     },
     "gamma": {
       "titulo": "Ondas Gamma, el pegamento de la conciencia",
-      "texto": "Gamma es la mas rapida y la mas misteriosa. Se cree que es responsable de pegar toda la informacion sensorial en una experiencia unificada. Cuando ves un gato, gamma une su forma, color, sonido y textura en un solo percepto. Es dificil de medir porque los musculos de la cara generan senales parecidas."
+      "texto": "Gamma es la más rápida y la más misteriosa. Se cree que es responsable de pegar toda la información sensorial en una experiencia unificada. Cuando ves un gato, gamma une su forma, color, sonido y textura en un solo percepto. Es difícil de medir porque los músculos de la cara generan señales parecidas."
     },
     "multicanal": {
-      "titulo": "Exploracion multicanal",
-      "texto": "Cada canal lleva su propio color. Fijate en como distintas partes del cerebro se activan de manera diferente en el mismo instante; esa distribucion espacial es la mitad de la informacion que un neurologo lee en un EEG."
+      "titulo": "Exploración multicanal",
+      "texto": "Cada canal lleva su propio color. Fíjate en cómo distintas partes del cerebro se activan de manera diferente en el mismo instante; esa distribución espacial es la mitad de la información que un neurólogo lee en un EEG."
     }
   },
   "vistas": {
     "unica": {
-      "titulo": "Vista unica",
-      "texto": "Un solo canal. Sirve para examinar la forma de la senal en detalle o para aislar una banda de frecuencia con los filtros."
+      "titulo": "Vista única",
+      "texto": "Un solo canal. Sirve para examinar la forma de la señal en detalle o para aislar una banda de frecuencia con los filtros."
     },
     "multi": {
       "titulo": "Vista multicanal",
-      "texto": "Montaje vertical, como en un electroencefalografo clinico. Cada canal con su color, para distinguir que hacen las distintas regiones."
+      "texto": "Montaje vertical, como en un electroencefalógrafo clínico. Cada canal con su color, para distinguir qué hacen las distintas regiones."
     },
     "superpuesta": {
       "titulo": "Vista superpuesta",
-      "texto": "Todas las senales sobre el mismo eje. Util para comparar amplitudes; se recomienda con dos a cuatro canales."
+      "texto": "Todas las señales sobre el mismo eje. Útil para comparar amplitudes; se recomienda con dos a cuatro canales."
     }
   },
   "senales": {
-    "raw": "Senal cruda del electrodo; mezcla de todas las frecuencias cerebrales.",
-    "attention": "Indice propietario de NeuroSky (0-100) que estima la concentracion.",
-    "meditation": "Indice propietario (0-100) que refleja relajacion y calma mental.",
-    "blink": "Detecta artefactos de parpadeo; util para interfaces BCI basadas en EOG.",
-    "delta": "Potencia en banda delta (0.5-4 Hz); sueno profundo.",
-    "theta": "Potencia en banda theta (4-8 Hz); meditacion y memoria.",
-    "low-alpha": "Alpha baja (8-10 Hz); relajacion cortical temprana.",
-    "high-alpha": "Alpha alta (10-12 Hz); relajacion cortical profunda.",
-    "low-beta": "Beta baja (12-18 Hz); ritmo sensoriomotor (SMR).",
-    "high-beta": "Beta alta (18-30 Hz); actividad mental intensa.",
-    "low-gamma": "Gamma baja (30-40 Hz); procesamiento cognitivo.",
-    "mid-gamma": "Gamma media (40-50 Hz); binding perceptual."
+    "raw": "Señal cruda del electrodo; mezcla de todas las frecuencias cerebrales.",
+    "attention": "Índice propietario de NeuroSky (0–100) que estima el nivel de concentración.",
+    "meditation": "Índice propietario (0–100) que refleja estados de relajación y calma mental.",
+    "blink": "Detecta artefactos de parpadeo; útil para interfaces BCI basadas en EOG.",
+    "delta": "Potencia en banda delta (0.5–4 Hz); sueño profundo.",
+    "theta": "Potencia en banda theta (4–8 Hz); meditación y memoria.",
+    "low-alpha": "Alpha baja (8–10 Hz); relajación cortical temprana.",
+    "high-alpha": "Alpha alta (10–12 Hz); relajación cortical profunda.",
+    "low-beta": "Beta baja (12–18 Hz); ritmo sensoriomotor (SMR).",
+    "high-beta": "Beta alta (18–30 Hz); actividad mental intensa.",
+    "low-gamma": "Gamma baja (30–40 Hz); procesamiento cognitivo.",
+    "mid-gamma": "Gamma media (40–50 Hz); binding perceptual."
   },
   "estados": {
     "desconectada": {
@@ -69,7 +69,7 @@
     },
     "sin_datos": {
       "etiqueta": "Sin datos",
-      "pista": "El puerto esta abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada."
+      "pista": "El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada."
     },
     "sin_contacto": {
       "etiqueta": "Sin contacto",
@@ -77,31 +77,103 @@
     },
     "contacto_pobre": {
       "etiqueta": "Contacto pobre",
-      "pista": "Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lobulo."
+      "pista": "Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lóbulo."
     },
     "calibrando": {
       "etiqueta": "Calibrando",
-      "pista": "La diadema esta estableciendo su linea base. Pide al visitante que se quede quieto unos segundos."
+      "pista": "La diadema está estableciendo su línea base. Pide al visitante que se quede quieto unos segundos."
     },
     "lista": {
       "etiqueta": "Lista",
-      "pista": "Senal estable."
+      "pista": "Señal estable."
     }
   },
   "juegos": {
     "jardin": {
-      "titulo": "Como funciona",
+      "titulo": "Cómo funciona",
       "parrafos": [
-        "El Jardin Mental es un ejercicio de *neurofeedback* basado en meditacion. La senal de meditacion de la diadema hace crecer las flores: por encima de 55 la flor sube de etapa, por debajo de 45 pierde salud. El objetivo es hacer florecer las cinco manteniendo la calma, no concentrandose con fuerza.",
-        "El juego no arranca hasta que la senal sirve. Antes de eso, un cero de 'todavia no hay datos' entraba como si fuera meditacion nula y la flor se marchitaba sola en unos diecisiete segundos."
+        "El Jardín Mental es un ejercicio de *neurofeedback* basado en meditación. La señal de meditación de la diadema hace crecer las flores: por encima de 55 la flor sube de etapa, por debajo de 45 pierde salud. El objetivo es hacer florecer las cinco manteniendo la calma, no concentrándose con fuerza.",
+        "El juego no arranca hasta que la señal sirve. Antes de eso, un cero de \"todavía no hay datos\" entraba como si fuera meditación nula y la flor se marchitaba sola en unos diecisiete segundos."
       ]
     },
     "carrera": {
-      "titulo": "Como funciona",
+      "titulo": "Cómo funciona",
       "parrafos": [
-        "La Carrera Neural es un ejercicio de *neurofeedback* basado en atencion. La senal de atencion de la diadema controla la velocidad del coche: a mayor concentracion sostenida, mas rapido avanza. Las flechas cambian de carril para esquivar obstaculos, y chocar cuesta velocidad durante unos segundos.",
-        "El coche gris es el rival, que avanza a velocidad constante. Como el juego no arranca hasta que la senal sirve, nadie empieza la carrera con medio kilometro de desventaja; volver de una caida reinicia la carrera en lugar de continuarla perdida."
+        "La Carrera Neural es un ejercicio de *neurofeedback* basado en atención. La señal de atención de la diadema controla la velocidad del coche: a mayor concentración sostenida, más rápido avanza. Las flechas cambian de carril para esquivar obstáculos, y chocar cuesta velocidad durante unos segundos.",
+        "El coche gris es el rival, que avanza a velocidad constante. Como el juego no arranca hasta que la señal sirve, nadie empieza la carrera con medio kilómetro de desventaja; volver de una caída reinicia la carrera en lugar de continuarla perdida."
       ]
+    }
+  },
+  "manual": {
+    "titulo": "Manual del operador",
+    "subtitulo": "NeuroDAC · Demostrador Académico de Neuroingeniería · DUNNE",
+    "intro": [
+      "Este manual es para quien opera NeuroDAC frente al público: en un museo, una feria de ciencias o un taller. No hace falta saber programar.",
+      "La demostración tiene dos personas: tú frente a la consola y un visitante con la diadema puesta. Tu trabajo es que la señal sea buena y explicar qué está viendo."
+    ],
+    "antes": {
+      "titulo": "Antes del evento",
+      "pasos": [
+        "Carga la diadema por completo. Dura unas ocho horas y no avisa antes de apagarse.",
+        "Lleva toallitas con alcohol: limpiar la frente del visitante mejora el contacto más que cualquier ajuste.",
+        "Verifica en tu computadora que la aplicación levanta y que la fuente simulada funciona. Si algo falla, es mejor descubrirlo en casa.",
+        "Prueba el emparejamiento Bluetooth en la computadora que vas a usar. Los puertos COM cambian entre máquinas.",
+        "Si hay proyector, revisa que el texto se lea desde el fondo del salón. El tema claro suele verse mejor con luz ambiental."
+      ]
+    },
+    "diadema": {
+      "titulo": "Colocar la diadema",
+      "pasos": [
+        "Limpia la frente del visitante con una toallita y espera a que seque.",
+        "Coloca el sensor sobre la frente, encima de la ceja izquierda, apartando el cabello. El sensor debe tocar piel, no pelo.",
+        "Engancha el clip en el lóbulo de la oreja izquierda. Ese clip es la referencia eléctrica: sin él no hay señal, aunque el sensor esté perfecto.",
+        "Pide al visitante que se acomode y deje de moverse. Apretar la mandíbula o parpadear fuerte ensucia la señal."
+      ],
+      "nota": "Si el visitante trae maquillaje en la frente o mucho fijador en el cabello, el contacto será pobre y no hay ajuste que lo arregle. Conviene decirlo con naturalidad y ofrecer la fuente simulada."
+    },
+    "operacion": {
+      "titulo": "Durante la demostración",
+      "pasos": [
+        "Levanta la aplicación y abre el navegador. La terminal debe quedar visible: ahí aparecen los errores.",
+        "Elige la fuente, escribe el puerto COM y presiona Conectar.",
+        "Observa el indicador de calidad. Hasta que diga Lista, los juegos no arrancan.",
+        "Mientras calibra, aprovecha para explicar qué es el EEG. Toma unos diez segundos.",
+        "Al terminar con un visitante, presiona Detener antes de pasar al siguiente."
+      ]
+    },
+    "problemas": {
+      "titulo": "Si algo falla",
+      "casos": [
+        {
+          "sintoma": "No conecta y dice que el puerto está ocupado",
+          "accion": "Otra ventana de la aplicación tiene el puerto abierto. Ciérrala, o presiona Detener en la otra página."
+        },
+        {
+          "sintoma": "Conecta pero nunca pasa de Sin datos",
+          "accion": "La diadema está apagada o se desemparejó. Apágala y enciéndela; si sigue, vuelve a emparejarla desde Windows."
+        },
+        {
+          "sintoma": "La señal se corta a media demostración",
+          "accion": "Es lo más común en Windows 11. Presiona Detener, Conectar de nuevo, y si se repite cambia a la fuente simulada y sigue la demostración."
+        },
+        {
+          "sintoma": "La aplicación deja de responder",
+          "accion": "Mira la terminal: ahí está la causa. Ciérrala con CTRL + C y vuelve a levantarla; tarda unos segundos."
+        },
+        {
+          "sintoma": "No hay diadema disponible o el visitante no quiere ponérsela",
+          "accion": "Usa la fuente simulada. Los juegos funcionan igual y la explicación no cambia."
+        }
+      ]
+    },
+    "cierre": {
+      "titulo": "Al terminar",
+      "pasos": [
+        "Presiona Detener y cierra la aplicación con CTRL + C en la terminal.",
+        "Apaga la diadema. No se apaga sola y se queda sin batería.",
+        "Guarda el clip de oreja: es la pieza que más se pierde."
+      ],
+      "nota": "La señal del visitante no se guarda en ningún momento. Vive en la memoria mientras dura la sesión y desaparece al detener. Si alguien pregunta, esa es la respuesta."
     }
   }
 }

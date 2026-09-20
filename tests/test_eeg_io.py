@@ -190,6 +190,18 @@ class TestDiscovery(unittest.TestCase):
     def test_returns_none_for_missing_directory(self):
         self.assertIsNone(find_demo_csv(self.root / "fantasma"))
 
+    def test_ignores_loose_csv_in_the_data_root(self):
+        # data/ no se versiona y acumula archivos sueltos; cargar uno por
+        # accidente significa mirar una senal distinta de la que se cree.
+        (self.root / "suelto.csv").write_text("Fp1\n1\n", encoding="utf-8")
+        self.assertIsNone(find_demo_csv(self.root))
+
+    def test_returns_none_without_a_processed_directory(self):
+        import shutil
+
+        shutil.rmtree(self.root / "processed")
+        self.assertIsNone(find_demo_csv(self.root))
+
 
 class TestLoadDemoDegrades(unittest.TestCase):
     """La aplicacion debe arrancar aunque `data/` este vacia."""
