@@ -246,6 +246,22 @@ dilo en el *pull request*; alguien con hardware lo verifica antes de fusionar.
 
 ---
 
+## Licencia
+
+| Qué | Licencia |
+|---|---|
+| Código: Python, JavaScript, CSS, HTML | **MIT** (`LICENSE`) |
+| Contenido didáctico y manual del operador | **CC BY 4.0** (`LICENSE-CONTENIDO.md`) |
+| Logotipo de DUNNE | reservado; ver `LICENSE-CONTENIDO.md` |
+
+Las dos licencias permiten *fork*, modificación, redistribución y uso con
+cualquier finalidad, incluso comercial, y las dos exigen mantener el crédito.
+
+Se separan porque las licencias Creative Commons no son adecuadas para
+software y las de software no están pensadas para textos didácticos.
+
+---
+
 ## Datos y licencias
 
 El registro de demostración proviene de **UC San Diego Resting State EEG Data
@@ -265,15 +281,6 @@ personales.
 
 ## Créditos
 
-| | |
-|---|---|
-| **Emmanuel Isaías Guízar Bayardo** | Arquitectura, capa de adquisición, migración de los juegos de Pygame a Canvas, estructura del repositorio, documentación |
-| **Emilio Hernández Vargas** | Videojuegos originales |
-| **Jesús Hernández Cabañas** | Liderazgo inicial del proyecto |
-| **Luis Santiago Medina Nava** | Documentación |
-| **Karen Cortés Cárdenas** | Documentación |
-| **André Emiliano Flores Serralta** | Documentación |
-
-El parser del protocolo ThinkGear se reimplementó contra la especificación de
-NeuroSky, tomando como referencia inicial
-[sr-gus/neurosky_mm2_headset](https://github.com/sr-gus/neurosky_mm2_headset).
+Los roles de cada persona, en taxonomía CRediT, están en
+[`CREDITS.md`](CREDITS.md). Para citar el proyecto, GitHub genera la
+referencia desde `CITATION.cff` con el botón **Cite this repository**.

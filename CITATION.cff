@@ -1,0 +1,77 @@
+cff-version: 1.2.0
+message: Si usas NeuroDAC en un trabajo académico, cítalo así.
+title: "NeuroDAC: Demostrador Académico de Neuroingeniería"
+abstract: >-
+  Aplicación web que visualiza electroencefalografía en vivo desde una diadema
+  NeuroSky MindWave Mobile 2 y la convierte en ejercicios de neurofeedback para
+  divulgación científica. Incluye una capa de adquisición con estado explícito
+  de la calidad de señal, una diadema simulada para ensayar sin hardware, y dos
+  juegos controlados por los índices de atención y meditación.
+type: software
+license: MIT
+repository-code: "https://github.com/EmmanuelIsaiasGuizarBayardo/NeuroDAC"
+version: "2.0.0"
+date-released: "2026-09-20"
+
+keywords:
+  - electroencefalografía
+  - interfaz cerebro-computadora
+  - neurofeedback
+  - divulgación científica
+  - NeuroSky
+  - EEG
+  - brain-computer interface
+  - science outreach
+
+authors:
+  - family-names: "Guízar Bayardo"
+    given-names: "Emmanuel Isaías"
+    affiliation: >-
+      División Universitaria de Neuroingeniería (DUNNE), Facultad de Medicina,
+      Universidad Nacional Autónoma de México
+  - family-names: "Hernández Vargas"
+    given-names: "Emilio"
+    affiliation: >-
+      División Universitaria de Neuroingeniería (DUNNE), Universidad Nacional
+      Autónoma de México
+  - family-names: "Hernández Cabañas"
+    given-names: "Jesús"
+    affiliation: >-
+      División Universitaria de Neuroingeniería (DUNNE), Universidad Nacional
+      Autónoma de México
+  - family-names: "Medina Nava"
+    given-names: "Luis Santiago"
+    affiliation: >-
+      División Universitaria de Neuroingeniería (DUNNE), Universidad Nacional
+      Autónoma de México
+  - family-names: "Cortés Cárdenas"
+    given-names: "Karen"
+    affiliation: >-
+      División Universitaria de Neuroingeniería (DUNNE), Universidad Nacional
+      Autónoma de México
+  - family-names: "Flores Serralta"
+    given-names: "André Emiliano"
+    affiliation: >-
+      División Universitaria de Neuroingeniería (DUNNE), Universidad Nacional
+      Autónoma de México
+
+references:
+  - type: data
+    title: >-
+      UC San Diego Resting State EEG Data from Patients with Parkinson's Disease
+    doi: "10.18112/openneuro.ds002778.v1.0.2"
+    license: CC0-1.0
+    notes: >-
+      Registro de demostración que reproduce la página de visualización.
+      No es obra de este proyecto.
+    authors:
+      - family-names: Rockhill
+        given-names: "Alexander P."
+      - family-names: Jackson
+        given-names: Nicko
+      - family-names: George
+        given-names: Jobi
+      - family-names: Aron
+        given-names: Adam
+      - family-names: Swann
+        given-names: "Nicole C."
