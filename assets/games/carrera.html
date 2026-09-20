@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Carrera Neural</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; font-family: Outfit, system-ui, sans-serif; }
+  canvas { display: block; }
+
+  #hud {
+    position: absolute; top: 8px; left: 8px; right: 8px;
+    display: flex; justify-content: space-between;
+    pointer-events: none; z-index: 10;
+  }
+  .chip {
+    background: rgba(0, 0, 0, .5);
+    backdrop-filter: blur(5px);
+    color: #eee; padding: 3px 10px; border-radius: 5px;
+    font-size: 11px; font-weight: 500;
+  }
+  .chip b { color: #4DA8DA; font-weight: 600; }
+  .chip b.behind { color: #e74c3c; }
+
+  #hint {
+    position: absolute; bottom: 10px; left: 0; right: 0;
+    text-align: center; color: rgba(128, 128, 128, .6);
+    font-size: 10px; z-index: 10;
+  }
+
+  /* Mismo mecanismo que en Jardín: mientras la señal no sirva el coche no
+     avanza, porque si no el fantasma se despega antes de empezar. */
+  #veil {
+    position: absolute; inset: 0; z-index: 20;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(20, 20, 20, .6);
+    backdrop-filter: blur(2px);
+    color: #eee; font-size: 14px; font-weight: 500;
+    text-align: center; padding: 0 32px;
+  }
+  #veil.on { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="chip">Distancia <b id="hud-distance">0 m</b></div>
+  <div class="chip">Atención <b id="hud-attention">50</b></div>
+  <div class="chip">Velocidad <b id="hud-speed">5.0</b></div>
+  <div class="chip">Rival <b id="hud-ghost">0 m</b></div>
+</div>
+
+<div id="hint">← → para cambiar de carril · W y S para probar sin diadema</div>
+<div id="veil">Esperando señal</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+"use strict";
+
+// --- Parámetros de juego. No cambiar sin actualizar el manual. --------------
+var LANES = 3;
+var BASE_SPEED = 5;        // m/s con atención en el umbral
+var ATT_PIVOT = 50;        // atención a partir de la cual se gana velocidad
+var KEY_STEP = 5;          // puntos por tecla en modo prueba
+var MIN_ATT = 0, MAX_ATT = 200;
+var PIXELS_PER_METER = 20;
+var CRASH_PENALTY = 3;     // m/s que se pierden al chocar
+var RECOVERY = 1;          // m/s que se recuperan por segundo
+var UPPER = 35;            // señal por encima: la atención sube
+var LOWER = 25;            // por debajo: baja
+var STEP = 2;              // puntos de atención por cuadro
+var GHOST_SPEED = BASE_SPEED + 40;
+var OBSTACLE_EVERY_M = 10;
+
+// --- Estado ----------------------------------------------------------------
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+var W, H;
+
+var signal = 50;
+var ready = false;
+var isDark = true;
+
+var attention = 50;
+var distance = 0;
+var ghostDistance = 0;
+var lastObstacleAt = 0;
+var obstacles = [];
+var penalty = 0;
+var lane = 1;
+var roadOffset = 0;
+var lastFrameAt = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function laneWidth() { return W / LANES; }
+function laneCenter(index) { return index * laneWidth() + laneWidth() / 2; }
+function carWidth() { return W / 7; }
+function carHeight() { return W / 6; }
+function playerY() { return H - carHeight() - 10; }
+
+// --- Dibujo -----------------------------------------------------------------
+function roadColors() {
+  return isDark
+    ? { back: '#1e1e1e', surface: '#2a2a2a', lane: 'rgba(255,255,255,.12)' }
+    : { back: '#e0e0e0', surface: '#d0d0d0', lane: 'rgba(0,0,0,.10)' };
+}
+
+function drawRoad() {
+  var c = roadColors();
+  ctx.fillStyle = c.back;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = c.surface;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = c.lane;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([30, 20]);
+  for (var i = 1; i < LANES; i++) {
+    var x = i * laneWidth();
+    ctx.beginPath();
+    ctx.moveTo(x, -50 + (roadOffset % 50));
+    ctx.lineTo(x, H + 50);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = 'rgba(77, 168, 218, .35)';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(2, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W - 2, 0); ctx.lineTo(W - 2, H); ctx.stroke();
+}
+
+function roundedRect(x, y, w, h, r) {
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); } else { ctx.rect(x, y, w, h); }
+}
+
+function drawCar(centerX, y, color, isGhost) {
+  var w = carWidth();
+  var h = carHeight();
+  var x = centerX - w / 2;
+
+  if (isGhost) { ctx.globalAlpha = 0.25; }
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  roundedRect(x + w * 0.15, y, w * 0.7, h, 8);
+  ctx.fill();
+
+  ctx.fillStyle = isGhost ? 'rgba(100,100,100,.5)' : 'rgba(77,168,218,.4)';
+  ctx.beginPath();
+  roundedRect(x + w * 0.22, y + h * 0.15, w * 0.56, h * 0.2, 4);
+  ctx.fill();
+
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x + w * 0.05, y + h * 0.05, w * 0.12, h * 0.18);
+  ctx.fillRect(x + w * 0.83, y + h * 0.05, w * 0.12, h * 0.18);
+  ctx.fillRect(x + w * 0.05, y + h * 0.72, w * 0.12, h * 0.18);
+  ctx.fillRect(x + w * 0.83, y + h * 0.72, w * 0.12, h * 0.18);
+
+  if (!isGhost) {
+    ctx.fillStyle = '#ff3333';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.25, y + h * 0.92, 3, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.75, y + h * 0.92, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+function drawObstacle(obstacle) {
+  var w = carWidth() * 0.85;
+  var h = carHeight() * 0.7;
+  var x = laneCenter(obstacle.lane) - w / 2;
+  var colors = ['#e74c3c', '#ff8c00', '#9b59b6'];
+
+  ctx.fillStyle = colors[obstacle.kind % colors.length];
+  ctx.beginPath();
+  roundedRect(x, obstacle.y, w, h, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,255,255,.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 6, obstacle.y + 6);
+  ctx.lineTo(x + w - 6, obstacle.y + h - 6);
+  ctx.moveTo(x + w - 6, obstacle.y + 6);
+  ctx.lineTo(x + 6, obstacle.y + h - 6);
+  ctx.stroke();
+}
+
+// --- Simulación -------------------------------------------------------------
+function currentSpeed() {
+  var bonus = Math.max(0, attention * 0.5 - ATT_PIVOT);
+  return BASE_SPEED + bonus - penalty;
+}
+
+function update(dt) {
+  if (signal > UPPER) {
+    attention = Math.min(MAX_ATT, attention + STEP);
+  } else if (signal < LOWER) {
+    attention = Math.max(MIN_ATT, attention - STEP);
+  }
+
+  var speed = currentSpeed();
+  penalty = Math.max(0, penalty - RECOVERY * dt);
+
+  distance += speed * dt;
+  ghostDistance += GHOST_SPEED * dt;
+  roadOffset += speed * PIXELS_PER_METER * dt;
+
+  if (distance - lastObstacleAt >= OBSTACLE_EVERY_M) {
+    obstacles.push({
+      lane: Math.floor(Math.random() * LANES),
+      y: -carHeight(),
+      kind: Math.floor(Math.random() * 3)
+    });
+    lastObstacleAt = distance;
+  }
+
+  for (var i = obstacles.length - 1; i >= 0; i--) {
+    var obstacle = obstacles[i];
+    obstacle.y += speed * PIXELS_PER_METER * dt;
+
+    var hit = obstacle.lane === lane
+      && Math.abs(obstacle.y - playerY()) < carHeight() * 0.7;
+    if (hit) {
+      penalty += CRASH_PENALTY;
+      obstacles.splice(i, 1);
+    } else if (obstacle.y > H + 50) {
+      obstacles.splice(i, 1);
+    }
+  }
+}
+
+function draw() {
+  drawRoad();
+
+  var ghostY = playerY() - 10 - (ghostDistance - distance) * PIXELS_PER_METER;
+  drawCar(laneCenter(1), ghostY, '#555', true);
+
+  for (var i = 0; i < obstacles.length; i++) { drawObstacle(obstacles[i]); }
+  drawCar(laneCenter(lane), playerY(), '#4DA8DA', false);
+
+  var gap = Math.round(ghostDistance - distance);
+  var ghostChip = document.getElementById('hud-ghost');
+  document.getElementById('hud-distance').textContent = Math.round(distance) + ' m';
+  document.getElementById('hud-attention').textContent = attention;
+  document.getElementById('hud-speed').textContent = currentSpeed().toFixed(1);
+  ghostChip.textContent = (gap > 0 ? '+' : '') + gap + ' m';
+  ghostChip.className = gap > 0 ? 'behind' : '';
+}
+
+function frame(timestamp) {
+  if (!lastFrameAt) { lastFrameAt = timestamp; }
+  var dt = Math.min((timestamp - lastFrameAt) / 1000, 0.05);
+  lastFrameAt = timestamp;
+
+  // La compuerta. Mientras la señal no sirva no se acumula distancia, ni la
+  // del jugador ni la del rival, así que nadie sale perdiendo de salida.
+  if (ready) { update(dt); }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function resetRace() {
+  attention = 50;
+  distance = 0;
+  ghostDistance = 0;
+  lastObstacleAt = 0;
+  obstacles = [];
+  penalty = 0;
+  lane = 1;
+  roadOffset = 0;
+}
+
+// --- Puente con la página ---------------------------------------------------
+function setReady(value) {
+  var next = !!value;
+  // Volver de una caída reinicia la carrera: continuar con el rival a medio
+  // kilómetro de ventaja no tiene sentido para el visitante.
+  if (next && !ready) { resetRace(); }
+  ready = next;
+  document.getElementById('veil').classList.toggle('on', !ready);
+}
+
+function handleKey(key) {
+  if (key === 'ArrowLeft') { lane = Math.max(0, lane - 1); }
+  if (key === 'ArrowRight') { lane = Math.min(LANES - 1, lane + 1); }
+  if (key === 'w' || key === 'W') { attention = Math.min(MAX_ATT, attention + KEY_STEP); }
+  if (key === 's' || key === 'S') { attention = Math.max(MIN_ATT, attention - KEY_STEP); }
+}
+
+window.addEventListener('message', function (event) {
+  var data = event.data;
+  if (!data) { return; }
+  if (typeof data.signalValue === 'number') { signal = data.signalValue; }
+  if (typeof data.theme === 'string') { isDark = data.theme === 'dark'; }
+  if (typeof data.ready === 'boolean') { setReady(data.ready); }
+  if (data.keydown) { handleKey(data.keydown); }
+});
+
+document.addEventListener('keydown', function (event) { handleKey(event.key); });
+
+setReady(false);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

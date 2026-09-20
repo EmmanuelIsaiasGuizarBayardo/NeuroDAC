@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Jardín Mental</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; font-family: Outfit, system-ui, sans-serif; }
+  canvas { display: block; }
+
+  #hud {
+    position: absolute; top: 10px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 16px;
+    pointer-events: none; z-index: 10;
+  }
+  .chip {
+    background: rgba(0, 0, 0, .45);
+    backdrop-filter: blur(5px);
+    color: #eee; padding: 4px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+  }
+  .chip b { color: #4DA8DA; font-weight: 600; }
+
+  #health-track {
+    position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+    width: 260px; height: 8px; border-radius: 4px;
+    background: rgba(128, 128, 128, .3); overflow: hidden; z-index: 10;
+  }
+  #health-fill {
+    height: 100%; width: 50%; border-radius: 4px;
+    background: linear-gradient(90deg, #4DA8DA, #00bc8c);
+    transition: width .3s;
+  }
+
+  #hint {
+    position: absolute; bottom: 12px; left: 0; right: 0;
+    text-align: center; color: rgba(128, 128, 128, .65);
+    font-size: 11px; z-index: 10;
+  }
+
+  /* La simulación se congela mientras la señal no sirve; el velo lo hace
+     visible para que el operador sepa que no es que el juego se trabó. */
+  #veil {
+    position: absolute; inset: 0; z-index: 20;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(13, 17, 23, .55);
+    backdrop-filter: blur(2px);
+    color: #eee; font-size: 14px; font-weight: 500;
+    text-align: center; padding: 0 32px;
+  }
+  #veil.on { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="chip">Flor <b id="hud-flower">1/5</b></div>
+  <div class="chip">Meditación <b id="hud-level">50</b></div>
+  <div class="chip">Etapa <b id="hud-stage">0/6</b></div>
+</div>
+
+<div id="health-track"><div id="health-fill"></div></div>
+<div id="hint">Usa ↑ y ↓ para probar sin diadema</div>
+<div id="veil">Esperando señal</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+"use strict";
+
+// --- Parámetros de juego. No cambiar sin actualizar el manual. --------------
+var STAGES = 6;          // etapas de crecimiento por flor
+var MAX_STEM = 150;      // altura máxima del tallo, en píxeles
+var FLOWERS = 5;         // flores por jardín
+var UPPER = 55;          // meditación por encima de esto: la flor sube
+var LOWER = 45;          // por debajo de esto: la flor baja
+var STEP = 1;            // puntos de atención por cuadro
+var TICKS_PER_BEAT = 60; // cuadros entre evaluaciones de crecimiento
+
+var PALETTES = [
+  { stem: '#55351d', bud: '#ff6347', petal: '#ffb6c1', center: '#ff69b4' },
+  { stem: '#3c2a14', bud: '#90ee90', petal: '#32cd32', center: '#228b22' },
+  { stem: '#503214', bud: '#87ceeb', petal: '#87cefa', center: '#4682b4' },
+  { stem: '#5a3c1e', bud: '#eee8aa', petal: '#eedd82', center: '#cd853f' },
+  { stem: '#462814', bud: '#dda0dd', petal: '#ee82ee', center: '#c71585' }
+];
+
+// --- Estado ----------------------------------------------------------------
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+var W, H;
+
+var signal = 50;      // último valor de meditación recibido
+var ready = false;    // la compuerta: sin esto la simulación no avanza
+var isDark = true;
+var clock = 0;
+
+var flowers = [];
+var finished = [];
+var current = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- Construcción del jardín ------------------------------------------------
+function makeFlower(x, groundY, palette) {
+  return {
+    x: x, groundY: groundY,
+    level: 50,      // atención acumulada de esta flor
+    threshold: 60,  // nivel necesario para crecer
+    health: 50,
+    stage: 0,
+    ticks: 0,
+    palette: palette
+  };
+}
+
+function resetGarden() {
+  var margin = 80;
+  var groundY = H * 0.65;
+  flowers = [];
+  for (var i = 0; i < FLOWERS; i++) {
+    var x = margin + (W - 2 * margin) * (i + 0.5) / FLOWERS
+          + (Math.random() - 0.5) * 40;
+    flowers.push(makeFlower(x, groundY, PALETTES[i % PALETTES.length]));
+  }
+  finished = [];
+  current = 0;
+}
+
+// --- Dibujo -----------------------------------------------------------------
+function backgroundColor() { return isDark ? '#0d1117' : '#f0f2f5'; }
+function groundColors() {
+  return isDark ? ['#1a2a1a', '#0d1117'] : ['#c8dcc8', '#f0f2f5'];
+}
+
+function drawGround() {
+  var y = H * 0.65 + 20;
+  var shades = groundColors();
+  var gradient = ctx.createLinearGradient(0, y, 0, H);
+  gradient.addColorStop(0, shades[0]);
+  gradient.addColorStop(1, shades[1]);
+
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  for (var x = 0; x <= W; x += 50) {
+    ctx.lineTo(x, y + Math.sin(x * 0.01 + 1) * 8);
+  }
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawLeaf(x, y, angle, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle + 0.1 * Math.sin(clock / 800));
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 12, 5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.6;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawFlower(f, isActive) {
+  var palette = f.palette;
+  var stemHeight = Math.floor((f.stage / STAGES) * MAX_STEM);
+
+  if (f.stage > 0) {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = palette.stem;
+    ctx.beginPath();
+    for (var i = 0; i < stemHeight; i += 3) {
+      var wobble = 4 * Math.sin(i / 15 + clock / 1000);
+      var px = f.x + wobble;
+      var py = f.groundY - i;
+      if (i === 0) { ctx.moveTo(px, py); } else { ctx.lineTo(px, py); }
+    }
+    ctx.stroke();
+
+    if (f.stage >= 2) {
+      drawLeaf(f.x - 15, f.groundY - stemHeight * 0.4, -0.3, palette.bud);
+      drawLeaf(f.x + 15, f.groundY - stemHeight * 0.4 + 10, 0.3, palette.bud);
+    }
+  }
+
+  // Semilla
+  if (f.stage === 0) {
+    var r = 6 + 2 * Math.sin(clock / 300);
+    ctx.beginPath();
+    ctx.arc(f.x, f.groundY, r, 0, Math.PI * 2);
+    ctx.fillStyle = palette.stem;
+    ctx.fill();
+    if (isActive) {
+      ctx.beginPath();
+      ctx.arc(f.x, f.groundY, r + 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(77, 168, 218, .2)';
+      ctx.fill();
+    }
+    return;
+  }
+
+  var topX = f.x + 2 * Math.sin(clock / 800);
+  var topY = (f.groundY - stemHeight) + 2 * Math.cos(clock / 800);
+
+  // Capullo
+  if (f.stage >= 1 && f.stage < 3) {
+    var size = 8 + f.stage * 3 + 2 * Math.sin(clock / 400);
+    ctx.beginPath();
+    ctx.ellipse(topX, topY, size * 0.7, size, 0, 0, Math.PI * 2);
+    ctx.fillStyle = palette.bud;
+    ctx.fill();
+  }
+
+  // Pétalos en formación
+  if (f.stage >= 3 && f.stage < STAGES) {
+    var petals = (f.stage - 2) * 3;
+    var radius = 8 + f.stage * 2;
+    for (var p = 0; p < petals; p++) {
+      var angle = (p * 2 * Math.PI / petals) + clock / 1200;
+      var reach = radius + 10;
+      ctx.beginPath();
+      ctx.arc(topX + reach * Math.cos(angle), topY + reach * Math.sin(angle),
+              8 + 2 * Math.sin(clock / 500 + p), 0, Math.PI * 2);
+      ctx.fillStyle = palette.petal;
+      ctx.globalAlpha = 0.75;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.beginPath();
+    ctx.arc(topX, topY, 6, 0, Math.PI * 2);
+    ctx.fillStyle = palette.center;
+    ctx.fill();
+  }
+
+  // Flor abierta
+  if (f.stage >= STAGES) {
+    var total = STAGES + 4;
+    for (var q = 0; q < total; q++) {
+      var a = (q * 2 * Math.PI / total) + clock / 1000;
+      var d = 26;
+      ctx.beginPath();
+      ctx.arc(topX + d * Math.cos(a), topY + d * Math.sin(a),
+              10 + 3 * Math.sin(clock / 400 + q), 0, Math.PI * 2);
+      ctx.fillStyle = palette.petal;
+      ctx.globalAlpha = 0.7;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.beginPath();
+    ctx.arc(topX, topY, 8 + 2 * Math.sin(clock / 300), 0, Math.PI * 2);
+    ctx.fillStyle = palette.center;
+    ctx.fill();
+
+    for (var s = 0; s < 3; s++) {
+      var sx = topX + 25 * Math.cos(clock / 600 + s * 2.1);
+      var sy = topY - 20 + 15 * Math.sin(clock / 500 + s * 1.7);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.3 * Math.sin(clock / 300 + s)) + ')';
+      ctx.fill();
+    }
+  }
+}
+
+// --- Simulación -------------------------------------------------------------
+function update() {
+  // La compuerta. Sin señal válida el jardín se queda quieto en vez de
+  // marchitarse solo, que es lo que pasaba cuando un cero de "todavía no hay
+  // datos" entraba como si fuera meditación nula.
+  if (!ready || flowers.length === 0) { return; }
+
+  var f = flowers[current];
+
+  if (signal > UPPER) {
+    f.level = Math.min(100, f.level + STEP);
+  } else if (signal < LOWER) {
+    f.level = Math.max(0, f.level - STEP);
+  }
+
+  f.ticks++;
+  if (f.ticks >= TICKS_PER_BEAT) {
+    f.ticks = 0;
+    if (f.level >= f.threshold && f.stage < STAGES) {
+      f.stage++;
+      f.health = Math.min(100, f.health + 3);
+    } else if (f.level < f.threshold && f.stage > 0) {
+      f.health = Math.max(0, f.health - 3);
+      f.stage = Math.max(0, f.stage - 1);
+    } else {
+      f.health = Math.max(0, Math.min(100,
+        f.health + (f.level >= f.threshold ? 7 : -3)));
+    }
+  }
+
+  if (f.health <= 0) { resetGarden(); return; }
+
+  if (f.stage >= STAGES) {
+    finished.push(Object.assign({}, f));
+    var next = current + 1;
+    if (next < flowers.length) {
+      flowers[next].health = f.health;
+      current = next;
+    } else {
+      resetGarden();
+    }
+  }
+}
+
+function draw() {
+  ctx.fillStyle = backgroundColor();
+  ctx.fillRect(0, 0, W, H);
+  drawGround();
+
+  for (var i = 0; i < finished.length; i++) { drawFlower(finished[i], false); }
+  if (flowers.length > 0 && current < flowers.length) {
+    drawFlower(flowers[current], true);
+  }
+
+  var f = flowers[current] || { health: 50, level: 50, stage: 0 };
+  document.getElementById('hud-flower').textContent = (current + 1) + '/' + FLOWERS;
+  document.getElementById('hud-level').textContent = f.level;
+  document.getElementById('hud-stage').textContent = f.stage + '/' + STAGES;
+  document.getElementById('health-fill').style.width = f.health + '%';
+}
+
+function frame() {
+  clock = performance.now();
+  update();
+  draw();
+  requestAnimationFrame(frame);
+}
+
+// --- Puente con la página ---------------------------------------------------
+function setReady(value) {
+  ready = !!value;
+  document.getElementById('veil').classList.toggle('on', !ready);
+}
+
+function nudge(key) {
+  if (key === 'ArrowUp') { signal = Math.min(100, signal + 10); }
+  if (key === 'ArrowDown') { signal = Math.max(0, signal - 10); }
+}
+
+window.addEventListener('message', function (event) {
+  var data = event.data;
+  if (!data) { return; }
+  if (typeof data.signalValue === 'number') { signal = data.signalValue; }
+  if (typeof data.theme === 'string') { isDark = data.theme === 'dark'; }
+  if (typeof data.ready === 'boolean') { setReady(data.ready); }
+  if (data.keydown) { nudge(data.keydown); }
+});
+
+// El iframe recibe teclas solo cuando tiene foco; la página además las
+// reenvía por postMessage para que funcionen sin hacer clic dentro.
+document.addEventListener('keydown', function (event) { nudge(event.key); });
+
+setReady(false);
+resetGarden();
+frame();
+</script>
+</body>
+</html>
