@@ -18,10 +18,13 @@ import numpy as np
 from neurodac.eeg_io import (
     DEFAULT_DEMO_NAME,
     DEFAULT_SAMPLE_RATE,
+    READERS,
     Recording,
     find_demo_csv,
+    is_non_scalp,
     load_demo,
     read_csv,
+    read_recording,
     remove_dc_offset,
     write_csv,
 )
@@ -51,9 +54,7 @@ class TestRemoveDcOffset(unittest.TestCase):
     def test_variability_is_preserved(self):
         # Restar la media no debe tocar la forma de la senal.
         data = make_recording().data
-        np.testing.assert_allclose(
-            remove_dc_offset(data).std(axis=1), data.std(axis=1), rtol=1e-9
-        )
+        np.testing.assert_allclose(remove_dc_offset(data).std(axis=1), data.std(axis=1), rtol=1e-9)
 
     def test_input_is_not_mutated(self):
         data = make_recording().data
@@ -117,9 +118,7 @@ class TestCsvRoundTrip(unittest.TestCase):
         self.assertEqual(restored.channels, original.channels)
         # Un decimal cuantiza a +-0.05 uV; recentrar tras redondear agrega
         # un corrimiento del orden de 0.002 uV. La cota honesta es 0.06.
-        np.testing.assert_allclose(
-            restored.data, remove_dc_offset(original.data), atol=0.06
-        )
+        np.testing.assert_allclose(restored.data, remove_dc_offset(original.data), atol=0.06)
 
     def test_more_decimals_reduce_the_error(self):
         original = remove_dc_offset(make_recording(2, 256).data)
@@ -141,9 +140,7 @@ class TestCsvRoundTrip(unittest.TestCase):
 
     def test_legacy_timestamp_column_is_recognised(self):
         # La primera version del proyecto escribio la columna asi.
-        self.path.write_text(
-            "git Timestamp,Raw\n0.0,10\n0.5,20\n1.0,30\n", encoding="utf-8"
-        )
+        self.path.write_text("git Timestamp,Raw\n0.0,10\n0.5,20\n1.0,30\n", encoding="utf-8")
         recording = read_csv(self.path)
         self.assertEqual(recording.channels, ("Raw",))
         self.assertAlmostEqual(recording.sample_rate, 2.0)
@@ -237,3 +234,90 @@ class TestLoadDemoDegrades(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+#: Canales reales de ds002778, tomados de
+#: sub-hc1/ses-hc/eeg/sub-hc1_ses-hc_task-rest_channels.tsv
+DS002778_CHANNELS = (
+    "Fp1",
+    "AF3",
+    "F7",
+    "F3",
+    "FC1",
+    "FC5",
+    "T7",
+    "C3",
+    "CP1",
+    "CP5",
+    "P7",
+    "P3",
+    "Pz",
+    "PO3",
+    "O1",
+    "Oz",
+    "O2",
+    "PO4",
+    "P4",
+    "P8",
+    "CP6",
+    "CP2",
+    "C4",
+    "T8",
+    "FC6",
+    "FC2",
+    "F4",
+    "F8",
+    "AF4",
+    "Fp2",
+    "Fz",
+    "Cz",
+    "EXG1",
+    "EXG2",
+    "EXG3",
+    "EXG4",
+    "EXG5",
+    "EXG6",
+    "EXG7",
+    "EXG8",
+    "Status",
+)
+
+
+class TestNonScalpChannels(unittest.TestCase):
+    """BioSemi marca como EEG electrodos que no van en el cuero cabelludo."""
+
+    def test_scalp_channels_are_kept(self):
+        for name in DS002778_CHANNELS[:32]:
+            with self.subTest(canal=name):
+                self.assertFalse(is_non_scalp(name))
+
+    def test_external_and_trigger_channels_are_dropped(self):
+        for name in DS002778_CHANNELS[32:]:
+            with self.subTest(canal=name):
+                self.assertTrue(is_non_scalp(name))
+
+    def test_filtering_the_real_montage_leaves_thirtytwo(self):
+        kept = [c for c in DS002778_CHANNELS if not is_non_scalp(c)]
+        self.assertEqual(len(kept), 32)
+        self.assertEqual(kept[0], "Fp1")
+        self.assertEqual(kept[-1], "Cz")
+
+    def test_case_is_ignored(self):
+        for name in ("status", "STATUS", "exg1"):
+            with self.subTest(canal=name):
+                self.assertTrue(is_non_scalp(name))
+
+
+class TestReaderDispatch(unittest.TestCase):
+    def test_known_formats(self):
+        self.assertEqual(sorted(READERS), [".bdf", ".set"])
+
+    def test_unknown_format_is_rejected(self):
+        with self.assertRaises(ValueError) as caught:
+            read_recording(Path("registro.edf"))
+        self.assertIn(".edf", str(caught.exception))
+
+    def test_uppercase_extension_works(self):
+        # No debe fallar por la extension; falla despues, al no existir.
+        with self.assertRaises(FileNotFoundError):
+            read_recording(Path("/no/existe/REGISTRO.BDF"))

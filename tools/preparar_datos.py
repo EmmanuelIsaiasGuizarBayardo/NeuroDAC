@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from neurodac.eeg_io import DEFAULT_DEMO_NAME, read_eeglab, write_csv
+from neurodac.eeg_io import DEFAULT_DEMO_NAME, READERS, read_recording, write_csv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -23,9 +23,12 @@ DATASET_ID = "ds002778"
 DATASET_NAME = "UC San Diego Resting State EEG Data from Patients with Parkinson's Disease"
 DATASET_URL = f"https://openneuro.org/datasets/{DATASET_ID}/versions/1.0.2"
 DATASET_LICENSE = "CC0"
+DATASET_GIT = "https://github.com/OpenNeuroDatasets/ds002778.git"
+
+formatos = ", ".join(sorted(READERS))
 
 INSTRUCCIONES = f"""
-No se encontro ningun archivo .set en {{directorio}}
+No se encontro ningun registro en {{directorio}}
 
 El registro de demostracion proviene de un dataset publico:
 
@@ -33,24 +36,41 @@ El registro de demostracion proviene de un dataset publico:
   OpenNeuro {DATASET_ID}, licencia {DATASET_LICENSE}
   {DATASET_URL}
 
-Pasos:
+OpenNeuro publica los datos en formato BioSemi (.bdf). Basta un sujeto.
 
-  1. Descarga el sujeto sub-hc1 desde la liga de arriba.
-  2. Deja el .set (y su .fdt si viene aparte) en {{directorio}}
-  3. Vuelve a correr:  uv run python tools/preparar_datos.py
+  Opcion A, desde el navegador:
+    1. Abre la liga de arriba.
+    2. Entra a sub-hc1 / ses-hc / eeg y descarga
+       sub-hc1_ses-hc_task-rest_eeg.bdf
+    3. Dejalo en {{directorio}}
 
-Tambien puedes apuntar a un archivo concreto:
+  Opcion B, con DataLad:
+    datalad install {DATASET_GIT}
+    cd ds002778
+    datalad get sub-hc1/ses-hc/eeg/sub-hc1_ses-hc_task-rest_eeg.bdf
 
-  uv run python tools/preparar_datos.py --source ruta\\al\\registro.set
+Despues vuelve a correr:  uv run python tools/preparar_datos.py
+
+Tambien puedes apuntar a un archivo concreto, en cualquiera de los
+formatos soportados ({formatos}):
+
+  uv run python tools/preparar_datos.py --source ruta\\al\\registro.bdf
 """
 
 
 def find_source(raw_dir: Path) -> Path | None:
-    """Primer `.set` dentro del directorio de datos crudos."""
+    """Primer registro en un formato soportado dentro de `data/raw/`.
+
+    Se prefiere `.bdf`, que es como OpenNeuro publica el dataset; `.set` se
+    acepta para quien traiga un derivado ya preprocesado en EEGLAB.
+    """
     if not raw_dir.is_dir():
         return None
-    candidates = sorted(raw_dir.rglob("*.set"))
-    return candidates[0] if candidates else None
+    for suffix in (".bdf", ".set"):
+        found = sorted(raw_dir.rglob(f"*{suffix}"))
+        if found:
+            return found[0]
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -90,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(f"Leyendo  {source}")
-    recording = read_eeglab(source)
+    recording = read_recording(source)
     print(
         f"  {recording.n_channels} canales, {recording.sample_rate:.0f} Hz, "
         f"{recording.duration_s:.1f} s"

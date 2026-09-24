@@ -27,10 +27,14 @@ import numpy as np
 
 __all__ = [
     "Recording",
+    "READERS",
     "find_demo_csv",
+    "is_non_scalp",
     "load_demo",
     "read_csv",
+    "read_bdf",
     "read_eeglab",
+    "read_recording",
     "remove_dc_offset",
     "write_csv",
 ]
@@ -43,6 +47,11 @@ MICROVOLTS_PER_VOLT = 1e6
 
 #: Nombres con los que distintas versiones del proyecto guardaron el tiempo.
 TIMESTAMP_COLUMNS = ("Timestamp", "git Timestamp", "timestamp", "time")
+
+#: BioSemi numera como EEG los electrodos externos EXG1-EXG8, que segun el
+#: estudio van en mastoides, ojos o musculo, y agrega un canal de disparo
+#: llamado Status. Ninguno es cuero cabelludo, asi que se descartan.
+NON_SCALP_PREFIXES = ("EXG", "Status", "STATUS", "Trigger", "TRIG")
 
 DEFAULT_DEMO_NAME = "demo_eeg.csv"
 DEFAULT_SAMPLE_RATE = 512.0
@@ -73,9 +82,7 @@ class Recording:
         if self.data.ndim != 2:
             raise ValueError(f"data debe ser 2D, no {self.data.ndim}D")
         if len(self.channels) != self.data.shape[0]:
-            raise ValueError(
-                f"{len(self.channels)} canales contra {self.data.shape[0]} filas"
-            )
+            raise ValueError(f"{len(self.channels)} canales contra {self.data.shape[0]} filas")
         if self.sample_rate <= 0:
             raise ValueError(f"sample_rate invalida: {self.sample_rate}")
 
@@ -185,6 +192,77 @@ def read_eeglab(path: str | Path, *, center: bool = True) -> Recording:
         sample_rate=float(container.info["sfreq"]),
         source=str(path),
     )
+
+
+def read_bdf(path: str | Path, *, center: bool = True) -> Recording:
+    """Lee un archivo BioSemi `.bdf`, que es como OpenNeuro publica los datos.
+
+    Descarta los canales que no son de cuero cabelludo. En ds002778 eso deja
+    los 32 del sistema 10-20 y quita `EXG1`-`EXG8` y `Status`.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Ruta al `.bdf`.
+    center : bool, optional
+        Quitar el offset DC de cada canal.
+
+    Raises
+    ------
+    FileNotFoundError
+        Si el archivo no existe.
+    """
+    import mne
+
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"no existe: {path}")
+
+    raw = mne.io.read_raw_bdf(path, preload=True, verbose="ERROR")
+    drop = [name for name in raw.ch_names if is_non_scalp(name)]
+    if drop:
+        raw.drop_channels(drop)
+        logger.info("Canales descartados por no ser de cuero cabelludo: %d", len(drop))
+
+    data = raw.get_data() * MICROVOLTS_PER_VOLT
+    if center:
+        data = remove_dc_offset(data)
+
+    return Recording(
+        channels=tuple(raw.ch_names),
+        data=data,
+        sample_rate=float(raw.info["sfreq"]),
+        source=str(path),
+    )
+
+
+def is_non_scalp(channel: str) -> bool:
+    """True si el nombre corresponde a un canal que no es de cuero cabelludo."""
+    return channel.upper().startswith(tuple(p.upper() for p in NON_SCALP_PREFIXES))
+
+
+#: Lectores por extension. `read_recording` despacha con esta tabla.
+READERS = {
+    ".set": read_eeglab,
+    ".bdf": read_bdf,
+}
+
+
+def read_recording(path: str | Path, *, center: bool = True) -> Recording:
+    """Lee un registro, eligiendo el lector por la extension del archivo.
+
+    Raises
+    ------
+    ValueError
+        Si la extension no tiene lector.
+    """
+    path = Path(path)
+    reader = READERS.get(path.suffix.lower())
+    if reader is None:
+        raise ValueError(
+            f"formato no soportado: {path.suffix!r}. Se aceptan: {', '.join(sorted(READERS))}"
+        )
+    return reader(path, center=center)
 
 
 def write_csv(
