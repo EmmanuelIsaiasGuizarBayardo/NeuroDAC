@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Contenido didáctico de NeuroDAC",
+  "description": "Estructura de content/divulgacion.es.json. Este archivo es del proyecto: adáptalo si cambia el contenido.",
+  "type": "object",
+  "required": [
+    "review",
+    "version",
+    "idioma",
+    "licencia",
+    "bandas",
+    "vistas",
+    "senales",
+    "estados",
+    "juegos",
+    "manual"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "clave": {
+      "pattern": "^[a-z0-9_-]+$"
+    },
+    "titulo_texto": {
+      "type": "object",
+      "required": [
+        "titulo",
+        "texto"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "titulo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "texto": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "review": {
+      "description": "Estado de la revisión académica. Declararlo es obligatorio; aprobarlo, no.",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "sin_revision",
+            "en_revision",
+            "revisado"
+          ]
+        },
+        "revisor": {
+          "type": "string"
+        },
+        "fecha": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "idioma": {
+      "type": "string",
+      "pattern": "^[a-z]{2}$"
+    },
+    "licencia": {
+      "type": "string"
+    },
+    "nota": {
+      "type": "string"
+    },
+    "bandas": {
+      "description": "Público: explicación de cada banda de frecuencia y de la vista multicanal.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/clave"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/titulo_texto"
+      }
+    },
+    "vistas": {
+      "description": "Público: explicación de cada modo de visualización.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/clave"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/titulo_texto"
+      }
+    },
+    "senales": {
+      "description": "Público: descripción breve de cada señal de la diadema.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/clave"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "estados": {
+      "description": "Público: cada estado de la señal con su instrucción accionable, visible en la consola.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/clave"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "etiqueta",
+          "pista"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "etiqueta": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pista": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "juegos": {
+      "description": "Público: panel que explica cada juego.",
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/clave"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "titulo",
+          "parrafos"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parrafos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Párrafos del panel."
+          }
+        }
+      }
+    },
+    "manual": {
+      "description": "Solo personal: manual del operador; tools/generar_manual.py lo genera en docs/operacion.md.",
+      "type": "object",
+      "required": [
+        "titulo",
+        "subtitulo",
+        "intro",
+        "antes",
+        "diadema",
+        "operacion",
+        "problemas",
+        "cierre"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "titulo": {
+          "type": "string"
+        },
+        "subtitulo": {
+          "type": "string"
+        },
+        "intro": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Párrafos de introducción."
+        },
+        "antes": {
+          "type": "object",
+          "description": "Solo personal: verificación previa al evento.",
+          "required": [
+            "titulo",
+            "pasos"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "titulo": {
+              "type": "string"
+            },
+            "pasos": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Pasos en orden."
+            }
+          }
+        },
+        "diadema": {
+          "type": "object",
+          "description": "Solo personal: colocación de la diadema.",
+          "required": [
+            "titulo",
+            "pasos"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "titulo": {
+              "type": "string"
+            },
+            "pasos": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Pasos en orden."
+            },
+            "nota": {
+              "type": "string"
+            }
+          }
+        },
+        "operacion": {
+          "type": "object",
+          "description": "Solo personal: pasos durante la demostración.",
+          "required": [
+            "titulo",
+            "pasos"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "titulo": {
+              "type": "string"
+            },
+            "pasos": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Pasos en orden."
+            }
+          }
+        },
+        "problemas": {
+          "description": "Solo personal: síntoma y acción para cada falla conocida.",
+          "type": "object",
+          "required": [
+            "titulo",
+            "casos"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "titulo": {
+              "type": "string"
+            },
+            "casos": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "sintoma",
+                  "accion"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "sintoma": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "accion": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "cierre": {
+          "type": "object",
+          "description": "Solo personal: cierre del evento.",
+          "required": [
+            "titulo",
+            "pasos"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "titulo": {
+              "type": "string"
+            },
+            "pasos": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Pasos en orden."
+            },
+            "nota": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

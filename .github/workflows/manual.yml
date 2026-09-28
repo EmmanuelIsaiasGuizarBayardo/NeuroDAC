@@ -1,0 +1,23 @@
+# Paso propio de NeuroDAC, fuera de ci.yml (que es del estandar): verifica que
+# docs/operacion.md siga al dia con content/divulgacion.es.json.
+name: manual
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  manual-al-dia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Sincronizar entorno
+        run: uv sync --locked
+
+      - name: Manual al dia
+        run: uv run python tools/generar_manual.py --check

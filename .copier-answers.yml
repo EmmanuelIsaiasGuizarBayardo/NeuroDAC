@@ -1,0 +1,18 @@
+# Gestionado por Copier: no editar a mano. Registra los rasgos del proyecto.
+_commit: v0.6.0
+_src_path: gh:EmmanuelIsaiasGuizarBayardo/plantilla-proyecto
+autor_apellidos: Guízar Bayardo
+autor_nombres: Emmanuel Isaías
+contenido_didactico: true
+datos_de_personas: true
+descripcion: 'Demostrador Académico de Neuroingeniería: visualización de EEG en vivo
+    y neurofeedback para divulgación.'
+entrada_propia: true
+investigacion: false
+nombre_proyecto: NeuroDAC
+operacion_en_vivo: true
+organizacion_github: EmmanuelIsaiasGuizarBayardo
+proyecto_dunne: true
+python_version: '3.12'
+senal_externa: true
+usa_gpu: false

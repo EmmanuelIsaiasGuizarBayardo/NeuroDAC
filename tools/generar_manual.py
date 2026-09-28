@@ -3,7 +3,7 @@
     uv run python tools/generar_manual.py
     uv run python tools/generar_manual.py --check   # solo verifica
 
-`docs/manual-operador.md` es un archivo generado: no se edita a mano. Las
+`docs/operacion.md` es un archivo generado: no se edita a mano. Las
 explicaciones de las bandas, de los estados y de los juegos son las mismas que
 muestra la aplicación, leídas de `content/divulgacion.es.json`, de modo que el
 manual y la pantalla no pueden decir cosas distintas.
@@ -22,7 +22,7 @@ from neurodac.content import content
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-OUTPUT = REPO_ROOT / "docs" / "manual-operador.md"
+OUTPUT = REPO_ROOT / "docs" / "operacion.md"
 
 #: Orden en que se presentan las bandas, de la más lenta a la más rápida.
 BAND_ORDER = ("none", "delta", "theta", "alpha", "beta", "gamma")

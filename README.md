@@ -251,8 +251,8 @@ dilo en el *pull request*; alguien con hardware lo verifica antes de fusionar.
 | Qué | Licencia |
 |---|---|
 | Código: Python, JavaScript, CSS, HTML | **MIT** (`LICENSE`) |
-| Contenido didáctico y manual del operador | **CC BY 4.0** (`LICENSE-CONTENIDO.md`) |
-| Logotipo de DUNNE | reservado; ver `LICENSE-CONTENIDO.md` |
+| Contenido didáctico y manual del operador | **CC BY 4.0** (`content/LICENSE.md`) |
+| Logotipo de DUNNE | reservado; ver `content/LICENSE.md` |
 
 Las dos licencias permiten *fork*, modificación, redistribución y uso con
 cualquier finalidad, incluso comercial, y las dos exigen mantener el crédito.
@@ -272,6 +272,8 @@ licencia **CC0**. Autores: Rockhill, Jackson, George, Aron y Swann.
 Los curadores piden que se les escriba antes de someter a revisión por pares
 un manuscrito que use estos datos.
 
+## Datos de personas
+
 **Señal de personas.** En operación, el EEG de los asistentes es efímero: se
 mantiene en memoria mientras dura la sesión y no se escribe a disco. Ningún
 componente de la aplicación persiste señal. Este repositorio no contiene datos
@@ -284,3 +286,14 @@ personales.
 Los roles de cada persona, en taxonomía CRediT, están en
 [`CREDITS.md`](CREDITS.md). Para citar el proyecto, GitHub genera la
 referencia desde `CITATION.cff` con el botón **Cite this repository**.
+
+## Estándar DUNNE
+
+NeuroDAC sigue el estándar DUNNE. Las reglas que le aplican están en
+`docs/estandar/` y los comandos de uso frecuente en `docs/comandos.md`.
+`AGENTS.md` le entrega ese contexto a Claude Code y a la mayoría de los
+asistentes de código. Para traer las mejoras del estándar, con el árbol limpio:
+
+```
+uvx copier update --trust
+```

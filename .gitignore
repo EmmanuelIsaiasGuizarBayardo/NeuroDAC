@@ -7,7 +7,9 @@ __pycache__/
 .ruff_cache/
 .env
 
-# ── Datos: se ignora el contenido, se preserva la topologia ──────────────────
+# ── Datos ────────────────────────────────────────────────────────────────────
+# Estas reglas aplican aunque el proyecto no tenga data/ ni results/: las
+# protecciones son incondicionales; el andamiaje, condicional.
 data/**
 !data/raw/
 !data/processed/
@@ -17,7 +19,7 @@ data/**
 results/**
 !results/.gitkeep
 
-# ── Formatos de senal (nunca a un repositorio publico) ───────────────────────
+# ── Formatos de senal: nunca a un repositorio, en ningun lugar ───────────────
 *.edf
 *.bdf
 *.gdf
@@ -28,15 +30,19 @@ results/**
 *.fdt
 *.fif
 *.cnt
+*.xdf
 *.mat
 
-# ── Multimedia y pesos de modelos ────────────────────────────────────────────
-*.mp4
-*.wav
+# ── Pesos de modelos ─────────────────────────────────────────────────────────
 *.pt
 *.pth
 *.ckpt
 *.onnx
 *.safetensors
 
-# NOTA: uv.lock SI se versiona. Es el ancla de reproducibilidad del entorno.
+# NOTA: los medios (*.mp4, *.wav, imagenes) NO se ignoran globalmente. En un
+# proyecto didactico son contenido versionado y licenciado; las grabaciones de
+# personas viven en data/, que ya esta excluido.
+
+# ── Instrucciones personales para asistentes de IA ───────────────────────────
+CLAUDE.local.md
