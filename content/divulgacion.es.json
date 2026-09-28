@@ -1,5 +1,8 @@
 {
-  "$esquema": "content/divulgacion.schema.md",
+  "$schema": "./esquema.json",
+  "review": {
+    "status": "sin_revision"
+  },
   "version": 1,
   "idioma": "es",
   "licencia": "CC-BY-4.0",

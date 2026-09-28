@@ -1,7 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Emmanuel Isaías Guízar Bayardo, División Universitaria de
-Neuroingeniería (DUNNE), Universidad Nacional Autónoma de México.
+Copyright Los autores de NeuroDAC (ver CREDITS.md) y División Universitaria de Neuroingeniería (DUNNE) - Universidad Nacional Autónoma de México (UNAM)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Esta licencia cubre el código fuente del repositorio. El contenido didáctico
-que la aplicación muestra al público se distribuye bajo Creative Commons
-Atribución 4.0 Internacional: ver LICENSE-CONTENIDO.md.
-
-El registro EEG de demostración no es obra de este proyecto: proviene de
-OpenNeuro ds002778 bajo CC0. Ver la sección "Datos y licencias" del README.

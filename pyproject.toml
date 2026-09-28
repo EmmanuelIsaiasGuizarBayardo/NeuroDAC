@@ -24,6 +24,8 @@ dev = [
     "pytest",
     "ruff",
     "pre-commit",
+    "pyyaml",
+    "jsonschema",
 ]
 
 [build-system]

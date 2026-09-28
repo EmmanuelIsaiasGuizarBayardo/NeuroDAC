@@ -1,7 +1,9 @@
 # Créditos
 
 NeuroDAC es un proyecto de la **División Universitaria de Neuroingeniería
-(DUNNE)**, Facultad de Medicina, Universidad Nacional Autónoma de México.
+(DUNNE)**, Departamento de Ingeniería en Sistemas Biomédicos (DISB), División de
+Ingeniería Mecánica e Industrial (DIMEI), Facultad de Ingeniería (FI),
+Universidad Nacional Autónoma de México (UNAM).
 
 Los roles siguen la taxonomía [CRediT](https://credit.niso.org/), que es la
 que usan las revistas académicas. Se listan explícitos para que la
@@ -21,7 +23,7 @@ Arquitectura del proyecto y de la capa de adquisición. Reimplementación del
 parser del protocolo ThinkGear. Migración de ambos juegos de Pygame a HTML5
 Canvas e integración en la aplicación web. Diadema simulada y suite de
 pruebas. Capa de datos EEG. Estructura del repositorio, entorno reproducible y
-documentación. Presidencia de DUNNE durante el desarrollo.
+documentación.
 
 ### Emilio Hernández Vargas
 
@@ -39,19 +41,19 @@ Concepción y liderazgo inicial del proyecto.
 
 ### Luis Santiago Medina Nava
 
-*Writing – review & editing*
+*Writing – original draft · Writing – review & editing*
 
 Redacción y revisión de la documentación del proyecto.
 
 ### Karen Cortés Cárdenas
 
-*Writing – review & editing*
+*Writing – original draft · Writing – review & editing*
 
 Redacción y revisión de la documentación del proyecto.
 
 ### André Emiliano Flores Serralta
 
-*Writing – review & editing*
+*Writing – original draft · Writing – review & editing*
 
 Redacción y revisión de la documentación del proyecto.
 
@@ -76,31 +78,21 @@ espectrales en base 256. Se le reconoce como punto de partida.
 OpenNeuro [`ds002778`](https://openneuro.org/datasets/ds002778/versions/1.0.2)
 v1.0.2, licencia CC0.
 
-Rockhill, A. P., Jackson, N., George, J., Aron, A., & Swann, N. C. (2021).
-*UC San Diego Resting State EEG Data from Patients with Parkinson's Disease*
-[Conjunto de datos]. OpenNeuro. https://doi.org/10.18112/openneuro.ds002778
+La referencia formal, con el DOI de la versión usada, está en `CITATION.cff`.
 
 Los curadores piden que se les escriba antes de someter a revisión por pares
 un manuscrito que use estos datos.
 
 ### Bibliotecas
 
-Dash y Plotly (MIT), MNE-Python (BSD-3), NumPy y pandas (BSD-3), pyserial
-(BSD-3), Bootstrap a través de dash-bootstrap-components (MIT). Las versiones
-exactas están en `uv.lock`.
+Las bibliotecas y sus versiones exactas están en `pyproject.toml` y `uv.lock`.
 
 ---
 
 ## Cómo citar
 
-El repositorio incluye `CITATION.cff`, así que GitHub genera la cita desde el
-botón **Cite this repository**. En APA 7:
-
-> Guízar Bayardo, E. I., Hernández Vargas, E., Hernández Cabañas, J., Medina
-> Nava, L. S., Cortés Cárdenas, K., & Flores Serralta, A. E. (2026).
-> *NeuroDAC: Demostrador Académico de Neuroingeniería* (versión 2.0.0)
-> [Software]. División Universitaria de Neuroingeniería, UNAM.
-> https://github.com/EmmanuelIsaiasGuizarBayardo/NeuroDAC
+GitHub genera la referencia desde `CITATION.cff` con el botón **Cite this
+repository**. No se mantiene una cita escrita a mano: se desfasaría con cada versión.
 
 ---
 
@@ -110,5 +102,5 @@ Quien contribuya agrega su nombre con los roles CRediT que correspondan, en el
 mismo *pull request* que su aportación. Los roles describen lo que se hizo, no
 la jerarquía; una persona puede tener uno o varios.
 
-`CITATION.cff` debe mantenerse en correspondencia con la lista de arriba: es
-el archivo que leen GitHub y Zenodo.
+`tests/test_gobernanza.py` verifica que cada autor de `CITATION.cff` tenga aquí
+su sección con el mismo nombre.
