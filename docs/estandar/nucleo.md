@@ -67,7 +67,7 @@ proyectos.
 
 ## Actualizar el estándar
 
-- Con el árbol limpio: `uvx copier update --trust`. Los cambios quedan sin commitear: se revisan con `git diff` y se commitean de inmediato, o la siguiente actualización encontrará el árbol sucio.
+- Con el árbol limpio: `uvx copier update --trust`. La actualización no toca el entorno: al terminar se corren `uv sync` y `uv run python tools/export_requirements.py`, se revisa con `git diff` y se commitea de inmediato, o la siguiente actualización encontrará el árbol sucio.
 - `docs/estandar/`, `AGENTS.md`, `CLAUDE.md` y `.agents/rules/` se regeneran; no se editan. Las notas propias para asistentes van en la sección final de `AGENTS.md`, que la actualización conserva.
 
 ## Lista de verificación

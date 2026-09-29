@@ -32,6 +32,18 @@ def etiqueta_existe(etiqueta: str) -> bool:
     return bool(salida.stdout.strip())
 
 
+def etiqueta_publicada(etiqueta: str) -> bool:
+    """True si la etiqueta ya existe en el remoto origin, aunque se haya borrado aquí."""
+    salida = subprocess.run(
+        ["git", "ls-remote", "--tags", "origin", f"refs/tags/{etiqueta}"],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return bool(salida.stdout.strip())
+
+
 def commit(mensaje: str) -> None:
     """Commit con los hooks de pre-commit.
 
@@ -61,10 +73,18 @@ def main(argumentos: list[str]) -> int:
         return 2
     version, mensaje = argumentos
     etiqueta = f"v{version}"
+    try:
+        publicada = etiqueta_publicada(etiqueta)
+    except subprocess.CalledProcessError:
+        print("No se pudo consultar el remoto origin, y publicar lo necesita.")
+        return 1
+    if publicada:
+        print(f"{etiqueta} ya está publicada en GitHub. Una etiqueta publicada no se mueve:")
+        print("usa la versión siguiente.")
+        return 1
     if etiqueta_existe(etiqueta):
-        print(
-            f"{etiqueta} ya existe. Una etiqueta publicada no se mueve: usa la versión siguiente."
-        )
+        print(f"{etiqueta} existe solo en tu máquina, de una publicación interrumpida.")
+        print(f"Bórrala con 'git tag -d {etiqueta}' y vuelve a correr.")
         return 1
     try:
         correr("uv", "version", version)
@@ -73,12 +93,15 @@ def main(argumentos: list[str]) -> int:
         correr("uv", "run", "pytest", "-q")
         commit(mensaje)
         correr("git", "tag", "-a", etiqueta, "-m", mensaje)
-        correr("git", "push", "--follow-tags")
+        correr("git", "push")
+        # Explícito, no --follow-tags: si GitHub ya tuviera la etiqueta, --follow-tags
+        # la omitiría en silencio; así, el rechazo detiene la publicación.
+        correr("git", "push", "origin", f"refs/tags/{etiqueta}")
     except subprocess.CalledProcessError as error:
         paso = " ".join(error.cmd)
         if etiqueta_existe(etiqueta):
             print(f"\nSe detuvo en: {paso}. {etiqueta} existe solo en tu máquina; al corregir,")
-            print("sube con: git push --follow-tags")
+            print(f"sube con: git push origin {etiqueta}")
         else:
             print(f"\nSe detuvo en: {paso}. No se creó {etiqueta}: corrige y vuelve a correr.")
         return 1

@@ -155,12 +155,14 @@ Traer las mejoras del estándar, con el árbol limpio. Sin `--defaults`, pregunt
 
 ```
 uvx copier update --trust
+uv sync
+uv run python tools/export_requirements.py
 git --no-pager diff --stat
 git add -A
 git commit -m "Actualizar a la plantilla DUNNE"
 ```
 
-El commit final no es opcional: sin él, la siguiente actualización encuentra el árbol sucio y se niega a correr.
+La actualización no toca el entorno, porque Copier corre sus tareas antes de reaplicar los cambios del proyecto; por eso `uv sync` va después. El commit final no es opcional: sin él, la siguiente actualización encuentra el árbol sucio y se niega a correr.
 
 Ver qué versión de la plantilla tiene este proyecto.
 
