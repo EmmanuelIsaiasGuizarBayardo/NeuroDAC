@@ -132,17 +132,19 @@ git --no-pager diff --stat
 <details>
 <summary><b>Publicar una versión</b></summary>
 
-Antes de cada presentación pública. Primero sube el número en `pyproject.toml` y en
-`CITATION.cff` (`version`), y fija `date-released` en el CFF con la fecha de hoy.
+Antes de cada presentación pública, o cuando haya cambios que publicar. Un solo
+comando sube el número en `pyproject.toml` y en `CITATION.cff`, fija la fecha de
+lanzamiento, regenera `requirements.txt`, corre las pruebas, hace el commit,
+etiqueta y sube:
 
 ```
-uv run pytest -q
-git commit -am "Publicar la versión 1.0.0"
-git tag -a v1.0.0 -m "Evento donde se presentó"
-git push --follow-tags
+uv run python tools/publicar.py 1.0.0 "Evento donde se presentó"
 ```
 
-La prueba de gobernanza falla si las dos versiones no coinciden.
+Se detiene en el primer paso que falle, siempre antes de etiquetar, y se niega a
+reutilizar una etiqueta: una etiqueta publicada no se mueve. En GitHub,
+`.github/workflows/etiqueta.yml` marca en rojo cualquier etiqueta que no coincida
+con la versión del paquete.
 
 </details>
 

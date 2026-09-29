@@ -28,6 +28,7 @@ Aplica porque el proyecto incluye contenido que no es software.
 ## Documentos derivados
 
 - Los documentos que se generan desde el contenido, como un manual del operador o una versión para revisión académica, salen de un script y nunca se editan a mano; así no pueden divergir de la fuente.
+- **PREFERENCIA.** El generador tiene un modo `--check` que falla si el documento está desfasado, y un workflow propio del proyecto lo corre en el CI; así la regla anterior se verifica sola.
 
 ## Lista de verificación
 
