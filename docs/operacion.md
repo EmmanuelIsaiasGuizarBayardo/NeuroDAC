@@ -45,7 +45,7 @@ trae qué hacer, no solo qué pasa.
 | Estado | Qué hacer |
 |---|---|
 | **Desconectada** | Elige la fuente y presiona Conectar. |
-| **Sin datos** | El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada. |
+| **Sin datos** | El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada; probablemente se quedó sin batería. |
 | **Sin contacto** | El electrodo frontal no toca la piel. Acomoda la diadema en la frente y verifica el clip de la oreja. |
 | **Contacto pobre** | Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lóbulo. |
 | **Calibrando** | La diadema está estableciendo su línea base. Pide al visitante que se quede quieto unos segundos. |

@@ -86,9 +86,7 @@ layout = html.Div(
                     children=[
                         connection_panel(IDS, default_signal="raw"),
                         html.Div(id="rt-signal-info", className="edu-panel"),
-                        html.Div(
-                            className="neuron-decoration", style={"height": "200px"}
-                        ),
+                        html.Div(className="neuron-decoration", style={"height": "200px"}),
                     ],
                 ),
                 dbc.Col(
@@ -100,7 +98,7 @@ layout = html.Div(
                 ),
             ]
         ),
-        dcc.Interval(id=IDS.interval, interval=200, disabled=True),
+        dcc.Interval(id=IDS.interval, interval=100, disabled=True),
         dcc.Store(id=IDS.store, data=None),
     ],
 )

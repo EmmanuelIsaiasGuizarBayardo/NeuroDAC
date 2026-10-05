@@ -72,7 +72,7 @@
     },
     "sin_datos": {
       "etiqueta": "Sin datos",
-      "pista": "El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada."
+      "pista": "El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada; probablemente se quedó sin batería."
     },
     "sin_contacto": {
       "etiqueta": "Sin contacto",
