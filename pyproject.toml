@@ -1,6 +1,6 @@
 [project]
 name = "neurodac"
-version = "2.1.0"
+version = "2.2.0"
 description = "Demostrador Académico de Neuroingeniería: visualización de EEG en vivo y neurofeedback para divulgación."
 readme = "README.md"
 requires-python = ">=3.12"

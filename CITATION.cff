@@ -12,8 +12,8 @@ license:
   - MIT
   - CC-BY-4.0
 repository-code: "https://github.com/EmmanuelIsaiasGuizarBayardo/NeuroDAC"
-version: "2.1.0"
-date-released: "2026-09-20"
+version: "2.2.0"
+date-released: "2026-10-05"
 
 keywords:
   - electroencefalografía
