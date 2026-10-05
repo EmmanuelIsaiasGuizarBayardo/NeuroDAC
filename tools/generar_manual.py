@@ -180,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(generated, encoding="utf-8")
+    OUTPUT.write_text(generated, encoding="utf-8", newline="\n")
     print(f"Escrito {OUTPUT.relative_to(REPO_ROOT)}  ({len(generated.splitlines())} líneas)")
     return 0
 
