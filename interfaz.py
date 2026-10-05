@@ -59,9 +59,7 @@ app.layout = html.Div(
                                             className="neurodac-brand",
                                             href="/",
                                             children=[
-                                                html.Img(
-                                                    src=app.get_asset_url("LOGO.jpg")
-                                                ),
+                                                html.Img(src=app.get_asset_url("LOGO.jpg")),
                                                 html.Div(
                                                     [
                                                         html.Span("NEURODAC"),
@@ -123,9 +121,7 @@ app.layout = html.Div(
                                                     className="theme-toggle-track",
                                                     n_clicks=0,
                                                     children=[
-                                                        html.Div(
-                                                            className="theme-toggle-knob"
-                                                        )
+                                                        html.Div(className="theme-toggle-knob")
                                                     ],
                                                 ),
                                                 html.Span(

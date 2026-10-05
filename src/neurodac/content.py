@@ -35,9 +35,7 @@ __all__ = [
 
 #: El archivo vive fuera del paquete porque es contenido, no codigo: se
 #: versiona aparte y lleva otra licencia.
-CONTENT_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "content" / "divulgacion.es.json"
-)
+CONTENT_PATH = Path(__file__).resolve().parent.parent.parent / "content" / "divulgacion.es.json"
 
 _EMPHASIS = re.compile(r"\*([^*]+)\*")
 

@@ -164,9 +164,7 @@ class SimulatedSource:
         return self._random.choice([0, 0, 0, 25])
 
     def _bands_packet(self) -> bytes:
-        raw = b"".join(
-            self._random.randint(1_000, 900_000).to_bytes(3, "big") for _ in BAND_NAMES
-        )
+        raw = b"".join(self._random.randint(1_000, 900_000).to_bytes(3, "big") for _ in BAND_NAMES)
         return self._emit(bytes([Code.ASIC_EEG_POWER, len(raw)]) + raw)
 
     def _bounded(self, center: int, spread: int) -> int:

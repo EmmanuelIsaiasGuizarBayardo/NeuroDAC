@@ -55,11 +55,7 @@ def walk(component):
 
 
 def ids_in(component) -> set[str]:
-    return {
-        node.id
-        for node in walk(component)
-        if isinstance(getattr(node, "id", None), str)
-    }
+    return {node.id for node in walk(component) if isinstance(getattr(node, "id", None), str)}
 
 
 class TestGameSpec(unittest.TestCase):
@@ -104,9 +100,7 @@ class TestAssetsExist(unittest.TestCase):
     def test_asset_url_is_served_by_dash(self):
         for name, spec in SPECS.items():
             with self.subTest(juego=name):
-                self.assertEqual(
-                    dash.get_asset_url(spec.asset), f"/assets/{spec.asset}"
-                )
+                self.assertEqual(dash.get_asset_url(spec.asset), f"/assets/{spec.asset}")
 
 
 class TestBridgeContract(unittest.TestCase):
@@ -205,9 +199,7 @@ class TestLayout(unittest.TestCase):
             keys=(),
         )
         gate = next(
-            node
-            for node in walk(build(spec)())
-            if getattr(node, "id", None) == "compuerta-gate"
+            node for node in walk(build(spec)()) if getattr(node, "id", None) == "compuerta-gate"
         )
         # Sin `d-none`: nace cerrada porque todavia no hay sesion.
         self.assertEqual(gate.className, "nd-gate")
@@ -224,9 +216,7 @@ class TestLayout(unittest.TestCase):
             keys=(),
         )
         store = next(
-            node
-            for node in walk(build(spec)())
-            if getattr(node, "id", None) == "puente-bridge"
+            node for node in walk(build(spec)()) if getattr(node, "id", None) == "puente-bridge"
         )
         self.assertFalse(store.data["ready"])
 

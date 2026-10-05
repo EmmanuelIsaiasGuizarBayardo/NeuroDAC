@@ -187,9 +187,7 @@ def connection_panel(
         dbc.Row(
             [
                 dbc.Col(
-                    dbc.Button(
-                        "Conectar", id=ids.connect, className="btn-nd-primary w-100"
-                    ),
+                    dbc.Button("Conectar", id=ids.connect, className="btn-nd-primary w-100"),
                     width=6,
                 ),
                 dbc.Col(

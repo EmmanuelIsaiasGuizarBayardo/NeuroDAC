@@ -146,9 +146,7 @@ class TestGate(unittest.TestCase):
         self.assertIn("frente", texto)
 
     def test_calibrating_shows_progress(self):
-        hijos = gate_children(
-            make_quality(SignalState.CALIBRATING, calibration_progress=0.4)
-        )
+        hijos = gate_children(make_quality(SignalState.CALIBRATING, calibration_progress=0.4))
         clases = [getattr(c, "className", "") for c in hijos]
         self.assertIn("nd-progress", clases)
 
@@ -161,9 +159,7 @@ class TestQualityBlock(unittest.TestCase):
 
     def test_contact_omitted_while_unknown(self):
         # Sin lectura de poor_signal la metrica no debe inventarse un valor.
-        texto = flatten(
-            render_quality(make_quality(SignalState.NO_DATA, poor_signal=None))
-        )
+        texto = flatten(render_quality(make_quality(SignalState.NO_DATA, poor_signal=None)))
         self.assertNotIn("Contacto", texto)
 
     def test_contact_shown_when_known(self):

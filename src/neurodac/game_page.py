@@ -140,11 +140,7 @@ def build(spec: GameSpec) -> callable:
         except ValueError as exc:
             return _alert(str(exc), "danger"), True, None
 
-        source = (
-            SimulatedSource(SIMULATED_NAME)
-            if source_kind == "sim"
-            else _serial_source(port)
-        )
+        source = SimulatedSource(SIMULATED_NAME) if source_kind == "sim" else _serial_source(port)
 
         try:
             registry.acquire(source, spec.signal)

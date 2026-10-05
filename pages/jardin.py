@@ -16,9 +16,7 @@ from neurodac.game_page import GameSpec, build
 def _explanation(key: str) -> list:
     """Panel divulgativo, leido del archivo de contenido."""
     title, paragraphs = game(key)
-    return [html.H6(title)] + [
-        html.P(render(p), style={"fontSize": "0.88rem"}) for p in paragraphs
-    ]
+    return [html.H6(title)] + [html.P(render(p), style={"fontSize": "0.88rem"}) for p in paragraphs]
 
 
 SPEC = GameSpec(

@@ -120,12 +120,8 @@ class TestRender(unittest.TestCase):
         self.assertEqual(pieces[1].children, "neurofeedback")
 
     def test_emphasis_at_the_edges(self):
-        self.assertEqual(
-            [type(p).__name__ for p in render("*inicio* y fin")], ["Em", "str"]
-        )
-        self.assertEqual(
-            [type(p).__name__ for p in render("inicio y *fin*")], ["str", "Em"]
-        )
+        self.assertEqual([type(p).__name__ for p in render("*inicio* y fin")], ["Em", "str"])
+        self.assertEqual([type(p).__name__ for p in render("inicio y *fin*")], ["str", "Em"])
 
     def test_several_emphases(self):
         pieces = render("*uno* y *dos*")

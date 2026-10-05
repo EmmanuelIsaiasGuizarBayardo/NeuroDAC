@@ -78,8 +78,7 @@ def validate_signal_type(signal_type: str) -> None:
     """
     if signal_type not in SIGNAL_TYPES:
         raise ValueError(
-            f"Tipo de senal invalido: {signal_type!r}. "
-            f"Validos: {', '.join(SIGNAL_TYPES)}"
+            f"Tipo de senal invalido: {signal_type!r}. Validos: {', '.join(SIGNAL_TYPES)}"
         )
 
 
@@ -319,9 +318,7 @@ class Session:
             error=error,
         )
 
-    def _resolve_state(
-        self, age: float | None, poor: int | None, progress: float
-    ) -> SignalState:
+    def _resolve_state(self, age: float | None, poor: int | None, progress: float) -> SignalState:
         """Decide el estado agregado a partir de las senales crudas."""
         if not self.is_running:
             return SignalState.DISCONNECTED

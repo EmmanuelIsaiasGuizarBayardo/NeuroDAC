@@ -110,9 +110,7 @@ def build_packet(payload: bytes) -> bytes:
         Si el payload excede la longitud maxima del protocolo.
     """
     if len(payload) > MAX_PAYLOAD_LENGTH:
-        raise ValueError(
-            f"payload de {len(payload)} bytes; el maximo es {MAX_PAYLOAD_LENGTH}"
-        )
+        raise ValueError(f"payload de {len(payload)} bytes; el maximo es {MAX_PAYLOAD_LENGTH}")
     return bytes([SYNC, SYNC, len(payload)]) + payload + bytes([checksum(payload)])
 
 
@@ -126,8 +124,7 @@ def _decode_value(code: int, raw: bytes) -> object:
         # Ocho bandas, cada una entero sin signo de 3 bytes big-endian.
         # Base 256, no 255: es donde fallaba la implementacion anterior.
         return {
-            name: int.from_bytes(raw[i * 3 : i * 3 + 3], "big")
-            for i, name in enumerate(BAND_NAMES)
+            name: int.from_bytes(raw[i * 3 : i * 3 + 3], "big") for i, name in enumerate(BAND_NAMES)
         }
 
     return raw

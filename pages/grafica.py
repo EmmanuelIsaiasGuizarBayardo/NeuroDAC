@@ -27,9 +27,7 @@ from neurodac.eeg_io import Recording, load_demo
 
 logger = logging.getLogger(__name__)
 
-dash.register_page(
-    __name__, path="/", name="Visualizacion EEG", redirect_from=["/grafica"]
-)
+dash.register_page(__name__, path="/", name="Visualizacion EEG", redirect_from=["/grafica"])
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -242,12 +240,8 @@ def controls() -> html.Div:
             html.Div(
                 className="playback-controls mb-2",
                 children=[
-                    dbc.Button(
-                        "Reproducir", id=IDS["play"], className="btn-play", size="sm"
-                    ),
-                    dbc.Button(
-                        "Detener", id=IDS["stop"], className="btn-play-stop", size="sm"
-                    ),
+                    dbc.Button("Reproducir", id=IDS["play"], className="btn-play", size="sm"),
+                    dbc.Button("Detener", id=IDS["stop"], className="btn-play-stop", size="sm"),
                     html.Span("Velocidad:", className="speed-label ms-2"),
                     dcc.Dropdown(
                         id=IDS["speed"],
@@ -284,9 +278,7 @@ def controls() -> html.Div:
                                 dbc.Label("Canal:", style={"fontSize": "0.8rem"}),
                                 dcc.Dropdown(
                                     id=IDS["signal"],
-                                    options=[
-                                        {"label": c, "value": c} for c in channels
-                                    ],
+                                    options=[{"label": c, "value": c} for c in channels],
                                     value=channels[0],
                                     clearable=False,
                                 ),
@@ -324,9 +316,7 @@ def controls() -> html.Div:
                             dbc.Col(
                                 dcc.Dropdown(
                                     id=IDS["channels"],
-                                    options=[
-                                        {"label": c, "value": c} for c in channels
-                                    ],
+                                    options=[{"label": c, "value": c} for c in channels],
                                     value=channels[: min(8, len(channels))],
                                     multi=True,
                                     searchable=True,
