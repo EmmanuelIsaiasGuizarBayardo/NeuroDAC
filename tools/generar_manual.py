@@ -94,14 +94,17 @@ def _states(data: dict) -> list[str]:
         "## Qué significa cada estado",
         "",
         "El indicador de calidad es lo primero que hay que mirar. Cada estado",
-        "trae qué hacer, no solo qué pasa.",
+        "trae qué hacer, no solo qué pasa. La última columna es lo que la",
+        "pantalla le dice al visitante mientras el juego espera.",
         "",
-        "| Estado | Qué hacer |",
-        "|---|---|",
+        "| Estado | Qué hacer | Lo que ve el visitante |",
+        "|---|---|---|",
     ]
     for signal_state in SignalState:
         entry = data["estados"][str(signal_state)]
-        out.append(f"| **{entry['etiqueta']}** | {plain(entry['pista'])} |")
+        out.append(
+            f"| **{entry['etiqueta']}** | {plain(entry['pista'])} | {plain(entry['visitante'])} |"
+        )
     out.append("")
     return out
 

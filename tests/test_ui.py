@@ -12,6 +12,8 @@ from __future__ import annotations
 import unittest
 
 from neurodac.acquisition import Quality, SignalState
+from neurodac.content import notice, visitor
+from neurodac.content import state as state_text
 from neurodac.ui import (
     STATE_STYLES,
     PanelIds,
@@ -19,7 +21,10 @@ from neurodac.ui import (
     format_age,
     format_rate,
     gate_children,
+    gate_for,
     render_quality,
+    sim_badge,
+    sim_badge_class,
 )
 
 
@@ -142,8 +147,25 @@ class TestGate(unittest.TestCase):
 
     def test_closed_gate_tells_the_visitor_what_happens(self):
         texto = flatten(gate_children(make_quality(SignalState.NO_CONTACT)))
-        self.assertIn("Sin contacto", texto)
+        self.assertIn(visitor("sin_contacto"), texto)
         self.assertIn("frente", texto)
+
+    def test_gate_never_shows_operator_text(self):
+        # La compuerta la ve el publico; la etiqueta y la pista son del personal.
+        for signal_state in SignalState:
+            if signal_state is SignalState.READY:
+                continue
+            label, hint = state_text(str(signal_state))
+            texto = flatten(gate_children(make_quality(signal_state)))
+            with self.subTest(estado=signal_state.value):
+                self.assertNotIn(hint, texto)
+                self.assertNotIn(label, texto)
+
+    def test_disconnected_gate_without_a_session(self):
+        # Al presionar Detener no hay objeto de calidad, pero la compuerta
+        # tiene que cerrarse con su texto.
+        texto = flatten(gate_for(SignalState.DISCONNECTED))
+        self.assertIn(visitor("desconectada"), texto)
 
     def test_calibrating_shows_progress(self):
         hijos = gate_children(make_quality(SignalState.CALIBRATING, calibration_progress=0.4))
@@ -180,3 +202,19 @@ class TestQualityBlock(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestSimulatedBadge(unittest.TestCase):
+    """Toda senal simulada se declara en pantalla mientras esta activa."""
+
+    def test_hidden_when_not_simulated(self):
+        self.assertIn("d-none", sim_badge_class(False))
+
+    def test_visible_when_simulated(self):
+        self.assertNotIn("d-none", sim_badge_class(True))
+
+    def test_badge_starts_hidden_and_reads_from_content(self):
+        badge = sim_badge("prueba-sim")
+        self.assertEqual(badge.id, "prueba-sim")
+        self.assertIn("d-none", badge.className)
+        self.assertEqual(badge.children, notice("simulada"))

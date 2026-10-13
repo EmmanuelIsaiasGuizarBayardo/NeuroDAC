@@ -106,3 +106,24 @@
     max-width: 34ch;
     color: var(--nd-text-muted);
 }
+
+/* --- Aviso de senal simulada ---
+   Encima del lienzo y de la compuerta: el estandar exige declarar toda senal
+   simulada en lo que mira el publico, mientras este activa. */
+.nd-sim-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    max-width: 60%;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--nd-accent-orange);
+    background: rgba(232, 132, 60, 0.18);
+    backdrop-filter: blur(3px);
+    color: var(--nd-accent-orange);
+    font-family: var(--nd-font-ui);
+    font-size: 0.78rem;
+    font-weight: 600;
+    pointer-events: none;
+}

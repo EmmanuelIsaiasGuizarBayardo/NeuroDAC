@@ -804,10 +804,15 @@
   /* ---------------------------------------------------------------- contrato */
 
   /**
-   * Estado recibido de la aplicacion por postMessage. Ver
-   * docs/contrato-juegos.md. Si no llega ningun mensaje en STANDALONE_MS, el
-   * juego asume que se abrio solo y se controla con teclado.
+   * Estado recibido de la aplicacion por postMessage; el protocolo esta en
+   * docs/contrato-juegos.md y lo emite src/neurodac/game_page.py.
+   *
+   * La ausencia de senal es NaN, nunca un numero que podria ser una lectura.
+   * Si no llega ningun mensaje en STANDALONE_MS, el juego asume que se abrio
+   * solo en el navegador: la compuerta se considera abierta y la senal se
+   * controla con teclado.
    */
+  const SOURCE = 'neurodac';
   const STANDALONE_MS = 1500;
   const KEY_COUNT = 9;
   const KEY = {
@@ -820,9 +825,9 @@
 
   const input = {
     signal: NaN,
+    ready: false,
+    simulated: false,
     theme: 'dark',
-    gate: 'sin_datos',
-    progress: 0,
     lastMessageAt: -1,
     held: new Uint8Array(KEY_COUNT),
     pressed: new Uint8Array(KEY_COUNT),
@@ -849,20 +854,39 @@
     return input.lastMessageAt < 0 && now > STANDALONE_MS;
   }
 
+  /**
+   * Si la simulacion puede avanzar. Dentro de la aplicacion exige `ready` y
+   * un valor; abierto solo, la compuerta no aplica.
+   */
+  function isReady(now) {
+    if (isStandalone(now)) return true;
+    return input.ready && input.signal === input.signal; // NaN no es igual a si mismo
+  }
+
+  /** Aplica un mensaje del puente. Separado de listen para poder probarlo. */
+  function receive(d, now) {
+    if (!d || d.source !== SOURCE) return false;
+    input.lastMessageAt = now;
+    if ('signalValue' in d) {
+      const v = d.signalValue;
+      input.signal = typeof v === 'number' && isFinite(v) ? v : NaN;
+    }
+    if (typeof d.ready === 'boolean') input.ready = d.ready;
+    if (typeof d.simulated === 'boolean') input.simulated = d.simulated;
+    if (typeof d.theme === 'string') input.theme = d.theme;
+    if (typeof d.keydown === 'string') keyDown(d.keydown);
+    if (typeof d.keyup === 'string') keyUp(d.keyup);
+    return true;
+  }
+
   function listen(onTheme) {
     root.addEventListener('message', function (e) {
-      const d = e.data;
-      if (!d || d.source !== 'neurodac') return;
-      input.lastMessageAt = root.performance.now();
-      if (typeof d.signal === 'number' && isFinite(d.signal)) input.signal = d.signal;
-      if (typeof d.gate === 'string') input.gate = d.gate;
-      if (typeof d.progress === 'number') input.progress = d.progress;
-      if (typeof d.theme === 'string' && d.theme !== input.theme) {
-        input.theme = d.theme;
-        if (onTheme) onTheme(d.theme);
+      // Solo mensajes de la misma pagina que sirve el juego.
+      if (e.origin !== root.location.origin) return;
+      const before = input.theme;
+      if (receive(e.data, root.performance.now()) && onTheme && input.theme !== before) {
+        onTheme(input.theme);
       }
-      if (typeof d.keydown === 'string') keyDown(d.keydown);
-      if (typeof d.keyup === 'string') keyUp(d.keyup);
     });
     root.addEventListener('keydown', function (e) { keyDown(e.key); });
     root.addEventListener('keyup', function (e) { keyUp(e.key); });
@@ -922,6 +946,8 @@
     listen: listen,
     endTick: endTick,
     isStandalone: isStandalone,
+    isReady: isReady,
+    receive: receive,
     countColors: countColors,
   };
 

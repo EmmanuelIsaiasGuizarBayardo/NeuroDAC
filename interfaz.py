@@ -31,6 +31,11 @@ app = dash.Dash(
         ),
     ],
     suppress_callback_exceptions=True,
+    # Los juegos cargan su motor dentro de su iframe. Sin esto Dash inyectaria
+    # tambien esos scripts en la pagina principal: recorre las subcarpetas de
+    # assets/, y assets_ignore no sirve porque solo compara el nombre del
+    # archivo, nunca la ruta.
+    assets_path_ignore=["games"],
     title="NEURODAC · DUNNE",
 )
 

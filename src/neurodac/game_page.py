@@ -1,12 +1,13 @@
 """Armado de las paginas de juego.
 
-Jardin y Carrera son la misma pagina con distinto lienzo: panel de conexion a
-la derecha, juego a la izquierda, y una compuerta que impide que el juego
-corra mientras la senal no sirva. Ese patron vive aqui una sola vez, sobre
-todo por la compuerta, que es la parte de la que depende que la demostracion
-no arranque con la flor marchitandose sola.
+Jardin y Carrera son la misma pagina con distinto lienzo: juego a la
+izquierda; grafica, panel de conexion y calidad a la derecha; y una compuerta
+que impide que el juego corra mientras la senal no sirva. Ese patron vive aqui
+una sola vez, sobre todo por la compuerta, que es la parte de la que depende
+que la demostracion no arranque con la flor marchitandose sola.
 
 Una pagina se reduce entonces a declarar su `GameSpec` y llamar a `build`.
+El protocolo con el juego esta en docs/contrato-juegos.md.
 """
 
 from __future__ import annotations
@@ -17,19 +18,55 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dcc, html, no_update
 
-from .acquisition import registry, validate_signal_type
+from .acquisition import Quality, SignalState, registry, validate_signal_type
 from .simulator import SimulatedSource
-from .ui import PanelIds, connection_panel, gate_children, render_quality
+from .ui import (
+    PanelIds,
+    connection_panel,
+    gate_children,
+    gate_for,
+    render_quality,
+    sim_badge,
+    sim_badge_class,
+)
 
-__all__ = ["GameSpec", "build"]
+__all__ = ["GameSpec", "bridge_payload", "build", "idle_payload"]
 
 #: Clave de la sesion simulada. Es la misma en todas las paginas a proposito:
 #: el registro comparte una sesion por fuente, asi que cambiar de pagina
 #: reutiliza la que ya existe en lugar de abrir otra.
 SIMULATED_NAME = "simulada"
 
-REFRESH_MS = 200
+#: Marca de los mensajes de la aplicacion; el juego ignora cualquier otro.
+BRIDGE_SOURCE = "neurodac"
+
+#: La grafica y el valor del juego se refrescan rapido; el panel de calidad y
+#: la compuerta, que el operador lee y no anima, van mas lento.
+GRAPH_MS = 100
+QUALITY_MS = 500
 GRAPH_POINTS = 512
+
+
+def bridge_payload(quality: Quality | None, latest: float | None, simulated: bool) -> dict:
+    """Mensaje que la pagina manda al juego.
+
+    `ready` exige el estado listo y ademas un valor: la sesion puede quedar
+    lista antes de que llegue el primer paquete eSense, y entonces no hay nada
+    que consumir. La ausencia viaja como `None`, nunca como un numero que
+    podria ser una lectura legitima.
+    """
+    has_value = latest is not None
+    return {
+        "source": BRIDGE_SOURCE,
+        "signalValue": float(latest) if has_value else None,
+        "ready": bool(quality is not None and quality.state is SignalState.READY and has_value),
+        "simulated": simulated,
+    }
+
+
+def idle_payload() -> dict:
+    """Puente sin sesion: el juego se detiene y no hay valor."""
+    return bridge_payload(None, None, simulated=False)
 
 
 @dataclass(frozen=True)
@@ -79,6 +116,8 @@ def build(spec: GameSpec) -> callable:
     gate_id = f"{spec.prefix}-gate"
     graph_id = f"{spec.prefix}-graph"
     bridge_id = f"{spec.prefix}-bridge"
+    quality_interval_id = f"{spec.prefix}-quality-interval"
+    sim_id = f"{spec.prefix}-sim"
 
     def layout() -> html.Div:
         return html.Div(
@@ -88,7 +127,7 @@ def build(spec: GameSpec) -> callable:
                 dbc.Row(
                     [
                         dbc.Col(
-                            _canvas_column(spec, frame_id, gate_id),
+                            _canvas_column(spec, frame_id, gate_id, sim_id),
                             width=spec.game_width,
                         ),
                         dbc.Col(
@@ -97,9 +136,10 @@ def build(spec: GameSpec) -> callable:
                         ),
                     ]
                 ),
-                dcc.Interval(id=ids.interval, interval=REFRESH_MS, disabled=True),
+                dcc.Interval(id=ids.interval, interval=GRAPH_MS, disabled=True),
+                dcc.Interval(id=quality_interval_id, interval=QUALITY_MS, disabled=True),
                 dcc.Store(id=ids.store),
-                dcc.Store(id=bridge_id, data={"signalValue": 50, "ready": False}),
+                dcc.Store(id=bridge_id, data=idle_payload()),
             ],
         )
 
@@ -117,7 +157,11 @@ def build(spec: GameSpec) -> callable:
     @dash.callback(
         Output(ids.status, "children"),
         Output(ids.interval, "disabled"),
+        Output(quality_interval_id, "disabled"),
         Output(ids.store, "data"),
+        Output(bridge_id, "data", allow_duplicate=True),
+        Output(gate_id, "children", allow_duplicate=True),
+        Output(gate_id, "className", allow_duplicate=True),
         Input(ids.connect, "n_clicks"),
         Input(ids.stop, "n_clicks"),
         State(ids.source, "value"),
@@ -130,15 +174,15 @@ def build(spec: GameSpec) -> callable:
 
         if dash.ctx.triggered_id == ids.stop:
             registry.stop(name)
-            return _alert("Detenido.", "secondary"), True, None
+            return stopped_outputs("Detenido.", "secondary")
 
         if source_kind == "real" and not port:
-            return _alert("Indica el puerto serial.", "warning"), True, None
+            return stopped_outputs("Indica el puerto serial.", "warning")
 
         try:
             validate_signal_type(spec.signal)
         except ValueError as exc:
-            return _alert(str(exc), "danger"), True, None
+            return stopped_outputs(str(exc), "danger")
 
         source = SimulatedSource(SIMULATED_NAME) if source_kind == "sim" else _serial_source(port)
 
@@ -147,65 +191,89 @@ def build(spec: GameSpec) -> callable:
         except Exception as exc:  # noqa: BLE001
             # El mensaje del sistema operativo distingue "puerto ocupado"
             # de "puerto inexistente", y eso es lo util en vivo.
-            return _alert(f"No se pudo conectar: {exc}", "danger"), True, None
+            return stopped_outputs(f"No se pudo conectar: {exc}", "danger")
 
-        return _alert(f"Sesion activa en {name}.", "success"), False, name
+        return (
+            _alert(f"Sesion activa en {name}.", "success"),
+            False,
+            False,
+            name,
+            idle_payload(),
+            no_update,
+            no_update,
+        )
+
+    @dash.callback(Output(sim_id, "className"), Input(ids.store, "data"))
+    def show_sim_badge(name):
+        """El aviso sale del nombre de la sesion activa: no puede desincronizarse."""
+        return sim_badge_class(name == SIMULATED_NAME)
 
     @dash.callback(
         Output(graph_id, "extendData"),
-        Output(ids.quality, "children"),
-        Output(gate_id, "children"),
-        Output(gate_id, "className"),
         Output(bridge_id, "data"),
         Input(ids.interval, "n_intervals"),
         State(ids.store, "data"),
         prevent_initial_call=True,
     )
-    def refresh(_n, name):
-        """Vacia la cola, refresca calidad y decide si la compuerta se abre."""
+    def refresh_signal(_n, name):
+        """Vacia la cola hacia la grafica y le pasa al juego el ultimo valor."""
         session = registry.get(name) if name else None
         if session is None:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, idle_payload()
 
-        quality = session.quality
         samples = session.drain()
         extend = no_update if not samples else ({"y": [samples]}, [0], GRAPH_POINTS)
-
-        gate = gate_children(quality)
-        latest = session.latest(spec.signal)
-
-        return (
-            extend,
-            render_quality(quality),
-            gate,
-            "nd-gate" if gate else "nd-gate d-none",
-            {
-                "signalValue": float(latest) if latest is not None else 50.0,
-                "ready": gate is None,
-            },
+        payload = bridge_payload(
+            session.quality, session.latest(spec.signal), name == SIMULATED_NAME
         )
+        return extend, payload
+
+    @dash.callback(
+        Output(ids.quality, "children"),
+        Output(gate_id, "children"),
+        Output(gate_id, "className"),
+        Input(quality_interval_id, "n_intervals"),
+        State(ids.store, "data"),
+        prevent_initial_call=True,
+    )
+    def refresh_quality(_n, name):
+        """Refresca el panel del operador y decide si la compuerta se abre."""
+        session = registry.get(name) if name else None
+        if session is None:
+            return no_update, no_update, no_update
+
+        quality = session.quality
+        gate = gate_children(quality)
+        return render_quality(quality), gate, "nd-gate" if gate else "nd-gate d-none"
 
     # El puente con el iframe: valor, tema y compuerta en un solo mensaje, mas
     # el reenvio de teclas para que funcionen sin hacer clic dentro del lienzo.
+    # Se reenvia tambien keyup: sin el, el juego cree que la tecla sigue
+    # oprimida y deja de registrar las siguientes pulsaciones.
     dash.clientside_callback(
         f"""
         function(bridge, theme) {{
             var frame = document.getElementById('{frame_id}');
             if (!frame || !frame.contentWindow) {{ return ''; }}
+            var origin = window.location.origin;
             frame.contentWindow.postMessage(
-                Object.assign({{theme: theme}}, bridge || {{}}), '*');
+                Object.assign({{theme: theme}}, bridge || {{}}), origin);
 
             if (!window._ndKeys_{spec.prefix}) {{
                 window._ndKeys_{spec.prefix} = true;
                 var keys = {list(spec.keys)!r};
-                document.addEventListener('keydown', function (event) {{
-                    if (keys.indexOf(event.key) === -1) {{ return; }}
-                    var target = document.getElementById('{frame_id}');
-                    if (target && target.contentWindow) {{
-                        target.contentWindow.postMessage(
-                            {{keydown: event.key}}, '*');
-                    }}
-                }});
+                var forward = function (kind) {{
+                    return function (event) {{
+                        if (keys.indexOf(event.key) === -1) {{ return; }}
+                        var target = document.getElementById('{frame_id}');
+                        if (!target || !target.contentWindow) {{ return; }}
+                        var message = {{source: '{BRIDGE_SOURCE}'}};
+                        message[kind] = event.key;
+                        target.contentWindow.postMessage(message, origin);
+                    }};
+                }};
+                document.addEventListener('keydown', forward('keydown'));
+                document.addEventListener('keyup', forward('keyup'));
             }}
             return '';
         }}
@@ -222,8 +290,25 @@ def build(spec: GameSpec) -> callable:
     return layout
 
 
-def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str) -> list:
-    """Lienzo del juego con la compuerta encima y el panel divulgativo debajo."""
+def stopped_outputs(message: str, color: str) -> tuple:
+    """Salidas de la conexion cuando no hay sesion activa.
+
+    Ademas de apagar los intervalos, le avisa al juego: sin esto conservaba el
+    ultimo `ready: true` y seguia corriendo con la senal congelada.
+    """
+    return (
+        _alert(message, color),
+        True,
+        True,
+        None,
+        idle_payload(),
+        gate_for(SignalState.DISCONNECTED),
+        "nd-gate",
+    )
+
+
+def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str, sim_id: str) -> list:
+    """Lienzo del juego con la compuerta y el aviso encima, y la explicacion debajo."""
     return [
         html.Div(
             className="game-canvas-container",
@@ -241,7 +326,13 @@ def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str) -> list:
                 ),
                 # La compuerta nace visible: sin sesion no hay senal, y sin
                 # senal el juego no debe correr.
-                html.Div(id=gate_id, className="nd-gate"),
+                html.Div(
+                    id=gate_id,
+                    className="nd-gate",
+                    children=gate_for(SignalState.DISCONNECTED),
+                ),
+                # Toda senal simulada se declara en pantalla mientras esta activa.
+                sim_badge(sim_id),
             ],
         ),
         html.Div(className="edu-panel mt-2", children=spec.explanation),
@@ -249,19 +340,19 @@ def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str) -> list:
 
 
 def _side_column(spec: GameSpec, ids: PanelIds, graph_id: str) -> list:
-    """Panel de conexion, calidad, grafica de la senal y decoracion."""
+    """Grafica de la senal arriba, para que no la tape el panel; luego conexion."""
     return [
-        connection_panel(ids, default_signal=spec.signal, title="Diadema"),
         html.Div(
-            className="graph-container mt-3",
+            className="graph-container mb-3",
             children=[
                 dcc.Graph(
                     id=graph_id,
                     figure=_blank_figure(spec.signal),
-                    style={"height": "260px"},
+                    style={"height": "240px"},
                 )
             ],
         ),
+        connection_panel(ids, default_signal=spec.signal, title="Diadema"),
         html.Div(className="neuron-decoration", style={"height": "150px"}),
     ]
 

@@ -171,22 +171,34 @@
     }
 
     function izta(x) {
-      if (x < 4 || x > 156) return 999;
-      // Cabeza, pecho (la cumbre mas alta), rodillas y pies, sobre una cresta.
+      // La cabellera: una pendiente larga que cae desde la cabeza hasta el
+      // borde, para que la mujer dormida no empiece cortada.
+      const hair = 101 - Math.min(1, x / 26) * 15;
+      // El Paso de Cortes: el collado que une los pies con el Popo.
+      const saddle = x > 140 ? 92 + (x - 140) * 0.06 : 999;
       return Math.min(
-        bump(x, 30, 80, 20),
-        bump(x, 66, 72, 26),
-        bump(x, 104, 79, 22),
-        bump(x, 136, 86, 18),
-        92
+        hair,
+        bump(x, 34, 81, 14),  // cabeza
+        bump(x, 70, 72, 26),  // pecho, la cumbre mas alta
+        bump(x, 108, 79, 20), // rodillas
+        bump(x, 138, 86, 16), // pies
+        saddle,
+        x < 175 ? 94 : 999
       );
     }
 
-    function rock(x, y, cx, snowline) {
+    // Faldas boscosas al pie de ambos volcanes, de borde a borde.
+    function foothills(x) {
+      return 104 + 2.5 * Math.sin(x * 0.17 + 0.4) + 1.5 * Math.sin(x * 0.41);
+    }
+
+    function rock(x, y, cx, snowline, gullies) {
       const lit = x < cx;
       // La nieve depende de la altitud, no de la profundidad bajo el borde: asi
       // forma un casquete en la cima y no una franja por toda la ladera.
-      const ragged = snowline + 3 * Math.sin(x * 0.9) + 2 * Math.sin(x * 2.3);
+      // `gullies` marca cuanto baja la nieve por las canadas: mucho en el Popo,
+      // poco en los campos de nieve continuos del Izta.
+      const ragged = snowline + gullies * (Math.sin(x * 0.9) + 0.6 * Math.sin(x * 2.3));
       if (y < ragged || (y < ragged + 4 && E.bayer(x, y) < (ragged + 4 - y) / 4)) {
         return lit ? SNOW : SNOW_SHADE;
       }
@@ -197,11 +209,11 @@
       id: 'volcanes',
       nombre: 'Iztaccíhuatl y Popocatépetl',
       draw(f, horizon) {
-        fillProfile(f, 0, 160, horizon, izta, function (x, y) {
-          return rock(x, y, 66, 84);
+        fillProfile(f, 0, 180, horizon, izta, function (x, y) {
+          return rock(x, y, 70, 84, 1.2);
         });
         fillProfile(f, 110, f.w - 1, horizon, popo, function (x, y) {
-          return rock(x, y, POPO_X, POPO_TOP + 16);
+          return rock(x, y, POPO_X, POPO_TOP + 16, 3);
         });
 
         // Fumarola: densa en la boca y cada vez mas rala al subir y abrirse.
@@ -220,6 +232,10 @@
             }
           }
         }
+
+        fillProfile(f, 0, f.w - 1, horizon, foothills, function (x, y, t) {
+          return y - t < 1 ? R.foliage[1] : R.foliage[0];
+        });
       },
     };
   }

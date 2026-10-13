@@ -12,6 +12,7 @@
     "vistas",
     "senales",
     "estados",
+    "avisos",
     "juegos",
     "manual"
   ],
@@ -113,7 +114,7 @@
       }
     },
     "estados": {
-      "description": "Público: cada estado de la señal con su instrucción accionable, visible en la consola.",
+      "description": "Cada estado de la señal: lo que lee el operador en la consola y lo que ve el visitante mientras el juego espera.",
       "type": "object",
       "propertyNames": {
         "$ref": "#/$defs/clave"
@@ -122,19 +123,41 @@
         "type": "object",
         "required": [
           "etiqueta",
-          "pista"
+          "pista",
+          "visitante"
         ],
         "additionalProperties": false,
         "properties": {
           "etiqueta": {
+            "description": "Solo personal: nombre corto del estado en la consola.",
             "type": "string",
             "minLength": 1
           },
           "pista": {
+            "description": "Solo personal: instrucción accionable para el operador.",
+            "type": "string",
+            "minLength": 1
+          },
+          "visitante": {
+            "description": "Público: mensaje breve para el visitante mientras el juego espera.",
             "type": "string",
             "minLength": 1
           }
         }
+      }
+    },
+    "avisos": {
+      "description": "Público: avisos que se declaran en pantalla mientras aplican.",
+      "type": "object",
+      "required": [
+        "simulada"
+      ],
+      "propertyNames": {
+        "$ref": "#/$defs/clave"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
       }
     },
     "juegos": {

@@ -40,16 +40,17 @@ La demostración tiene dos personas: tú frente a la consola y un visitante con 
 ## Qué significa cada estado
 
 El indicador de calidad es lo primero que hay que mirar. Cada estado
-trae qué hacer, no solo qué pasa.
+trae qué hacer, no solo qué pasa. La última columna es lo que la
+pantalla le dice al visitante mientras el juego espera.
 
-| Estado | Qué hacer |
-|---|---|
-| **Desconectada** | Elige la fuente y presiona Conectar. |
-| **Sin datos** | El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada; probablemente se quedó sin batería. |
-| **Sin contacto** | El electrodo frontal no toca la piel. Acomoda la diadema en la frente y verifica el clip de la oreja. |
-| **Contacto pobre** | Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lóbulo. |
-| **Calibrando** | La diadema está estableciendo su línea base. Pide al visitante que se quede quieto unos segundos. |
-| **Lista** | Señal estable. |
+| Estado | Qué hacer | Lo que ve el visitante |
+|---|---|---|
+| **Desconectada** | Elige la fuente y presiona Conectar. | En un momento empezamos. |
+| **Sin datos** | El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada; probablemente se quedó sin batería. | Estamos conectando la diadema; espera un momento. |
+| **Sin contacto** | El electrodo frontal no toca la piel. Acomoda la diadema en la frente y verifica el clip de la oreja. | Acomódate la diadema: el sensor va sobre la frente. |
+| **Contacto pobre** | Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lóbulo. | Aparta el cabello de la frente para que el sensor te escuche mejor. |
+| **Calibrando** | La diadema está estableciendo su línea base. Pide al visitante que se quede quieto unos segundos. | Quédate quieto y respira tranquilo: la diadema te está conociendo. |
+| **Lista** | Señal estable. | ¡Listo! Ya puedes jugar. |
 
 ## Qué explicar de cada banda
 

@@ -27,10 +27,12 @@ __all__ = [
     "band",
     "content",
     "game",
+    "notice",
     "render",
     "signal",
     "state",
     "view",
+    "visitor",
 ]
 
 #: El archivo vive fuera del paquete porque es contenido, no codigo: se
@@ -40,7 +42,7 @@ CONTENT_PATH = Path(__file__).resolve().parent.parent.parent / "content" / "divu
 _EMPHASIS = re.compile(r"\*([^*]+)\*")
 
 #: Secciones que la interfaz da por hechas.
-REQUIRED_SECTIONS = ("bandas", "vistas", "senales", "estados", "juegos")
+REQUIRED_SECTIONS = ("bandas", "vistas", "senales", "estados", "avisos", "juegos")
 
 
 @dataclass(frozen=True)
@@ -149,6 +151,26 @@ def state(key: str) -> tuple[str, str]:
     if key not in data:
         raise ContentError(f"no hay texto para el estado {key!r}")
     return data[key]["etiqueta"], data[key]["pista"]
+
+
+def visitor(key: str) -> str:
+    """Mensaje para el visitante mientras el juego espera en ese estado.
+
+    Es el texto de la compuerta, que ve el publico. La etiqueta y la pista de
+    `state` son solo para el personal y nunca van ahi.
+    """
+    data = content()["estados"]
+    if key not in data:
+        raise ContentError(f"no hay texto para el estado {key!r}")
+    return data[key]["visitante"]
+
+
+def notice(key: str) -> str:
+    """Aviso que se declara en pantalla mientras aplica, como la senal simulada."""
+    data = content()["avisos"]
+    if key not in data:
+        raise ContentError(f"no hay aviso {key!r}")
+    return data[key]
 
 
 def game(key: str) -> tuple[str, list[str]]:

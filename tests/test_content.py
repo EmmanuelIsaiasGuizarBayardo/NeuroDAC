@@ -24,10 +24,12 @@ from neurodac.content import (
     band,
     content,
     game,
+    notice,
     render,
     signal,
     state,
     view,
+    visitor,
 )
 
 BANDS = ("none", "delta", "theta", "alpha", "beta", "gamma")
@@ -107,6 +109,45 @@ class TestHintsAreActionable(unittest.TestCase):
             _, hint = state(str(signal_state))
             with self.subTest(estado=str(signal_state)):
                 self.assertGreater(len(hint), 25)
+
+
+class TestAudiences(unittest.TestCase):
+    """Lo que ve el publico y lo que lee el personal no se mezclan."""
+
+    def test_every_signal_state_has_a_visitor_message(self):
+        for signal_state in SignalState:
+            with self.subTest(estado=signal_state.value):
+                self.assertTrue(visitor(str(signal_state)).strip())
+
+    def test_visitor_message_is_not_the_operator_hint(self):
+        # La pista habla del visitante en tercera persona ("pide al visitante
+        # que..."); mostrarsela al publico es justo lo que esta regla evita.
+        for signal_state in SignalState:
+            label, hint = state(str(signal_state))
+            message = visitor(str(signal_state))
+            with self.subTest(estado=signal_state.value):
+                self.assertNotEqual(message, hint)
+                self.assertNotEqual(message, label)
+                self.assertNotIn("visitante", message.lower())
+
+    def test_schema_marks_operator_fields_as_staff_only(self):
+        schema = json.loads((CONTENT_PATH.parent / "esquema.json").read_text(encoding="utf-8"))
+        fields = schema["properties"]["estados"]["additionalProperties"]["properties"]
+        self.assertTrue(fields["etiqueta"]["description"].startswith("Solo personal:"))
+        self.assertTrue(fields["pista"]["description"].startswith("Solo personal:"))
+        self.assertTrue(fields["visitante"]["description"].startswith("Público:"))
+
+    def test_simulated_signal_notice_exists(self):
+        # El estandar exige declarar en pantalla toda senal simulada.
+        self.assertIn("simulada", notice("simulada").lower())
+
+    def test_unknown_visitor_state_fails_loudly(self):
+        with self.assertRaises(ContentError):
+            visitor("euforica")
+
+    def test_unknown_notice_fails_loudly(self):
+        with self.assertRaises(ContentError):
+            notice("inventado")
 
 
 class TestRender(unittest.TestCase):

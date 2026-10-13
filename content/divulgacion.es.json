@@ -68,28 +68,37 @@
   "estados": {
     "desconectada": {
       "etiqueta": "Desconectada",
-      "pista": "Elige la fuente y presiona Conectar."
+      "pista": "Elige la fuente y presiona Conectar.",
+      "visitante": "En un momento empezamos."
     },
     "sin_datos": {
       "etiqueta": "Sin datos",
-      "pista": "El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada; probablemente se quedó sin batería."
+      "pista": "El puerto está abierto pero no llegan tramas. Revisa que la diadema siga encendida y emparejada; probablemente se quedó sin batería.",
+      "visitante": "Estamos conectando la diadema; espera un momento."
     },
     "sin_contacto": {
       "etiqueta": "Sin contacto",
-      "pista": "El electrodo frontal no toca la piel. Acomoda la diadema en la frente y verifica el clip de la oreja."
+      "pista": "El electrodo frontal no toca la piel. Acomoda la diadema en la frente y verifica el clip de la oreja.",
+      "visitante": "Acomódate la diadema: el sensor va sobre la frente."
     },
     "contacto_pobre": {
       "etiqueta": "Contacto pobre",
-      "pista": "Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lóbulo."
+      "pista": "Hay contacto pero con ruido. Aparta el cabello de la frente y revisa que el clip haga contacto con el lóbulo.",
+      "visitante": "Aparta el cabello de la frente para que el sensor te escuche mejor."
     },
     "calibrando": {
       "etiqueta": "Calibrando",
-      "pista": "La diadema está estableciendo su línea base. Pide al visitante que se quede quieto unos segundos."
+      "pista": "La diadema está estableciendo su línea base. Pide al visitante que se quede quieto unos segundos.",
+      "visitante": "Quédate quieto y respira tranquilo: la diadema te está conociendo."
     },
     "lista": {
       "etiqueta": "Lista",
-      "pista": "Señal estable."
+      "pista": "Señal estable.",
+      "visitante": "¡Listo! Ya puedes jugar."
     }
+  },
+  "avisos": {
+    "simulada": "Señal simulada: no es la actividad de una persona."
   },
   "juegos": {
     "jardin": {

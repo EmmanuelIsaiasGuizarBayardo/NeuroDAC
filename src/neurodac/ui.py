@@ -14,7 +14,9 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from .acquisition import SIGNAL_TYPES, Quality, SignalState
+from .content import notice as notice_text
 from .content import state as state_text
+from .content import visitor as visitor_text
 
 __all__ = [
     "STATE_STYLES",
@@ -25,7 +27,10 @@ __all__ = [
     "format_age",
     "format_rate",
     "gate_children",
+    "gate_for",
     "render_quality",
+    "sim_badge",
+    "sim_badge_class",
 ]
 
 
@@ -259,30 +264,48 @@ def render_quality(quality: Quality) -> list:
     return rows
 
 
-def gate_children(quality: Quality) -> list | None:
-    """Contenido de la compuerta de arranque, o None si la senal ya sirve.
+def gate_for(signal_state: SignalState, progress: float = 0.0) -> list | None:
+    """Contenido de la compuerta para un estado, o None si la senal ya sirve.
 
     Jardin y Carrera la comparten. Mientras devuelva algo, el juego no debe
     correr: es lo que impide que la flor se muera o que el fantasma se despegue
     antes de que el visitante haya hecho nada.
+
+    La compuerta la ve el publico, asi que lleva solo el texto del visitante.
+    La etiqueta y la pista son del operador y viven en el panel de calidad.
     """
-    if quality.state is SignalState.READY:
+    if signal_state is SignalState.READY:
         return None
 
-    style = describe(quality)
-    children = [
-        html.Div(style.label, className="nd-gate-title"),
-        html.Div(style.hint, className="nd-gate-hint"),
-    ]
-    if quality.state is SignalState.CALIBRATING:
+    children = [html.Div(visitor_text(str(signal_state)), className="nd-gate-title")]
+    if signal_state is SignalState.CALIBRATING:
         children.append(
             html.Div(
                 html.Div(
                     className="nd-progress-fill",
-                    style={"width": f"{quality.calibration_progress * 100:.0f}%"},
+                    style={"width": f"{progress * 100:.0f}%"},
                 ),
                 className="nd-progress",
                 style={"maxWidth": "220px"},
             )
         )
     return children
+
+
+def gate_children(quality: Quality) -> list | None:
+    """Compuerta a partir de una lectura de calidad."""
+    return gate_for(quality.state, quality.calibration_progress)
+
+
+def sim_badge_class(simulated: bool) -> str:
+    """El aviso de senal simulada se ve mientras la fuente lo sea."""
+    return "nd-sim-badge" if simulated else "nd-sim-badge d-none"
+
+
+def sim_badge(component_id: str) -> html.Div:
+    """Aviso de senal simulada, oculto hasta que una sesion simulada lo active.
+
+    Toda senal simulada se declara en pantalla mientras esta activa. Va encima
+    de lo que mira el publico, no en el panel del operador.
+    """
+    return html.Div(notice_text("simulada"), id=component_id, className=sim_badge_class(False))

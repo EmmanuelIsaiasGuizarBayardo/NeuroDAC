@@ -17,9 +17,34 @@ from pathlib import Path
 
 import dash
 
-from neurodac.game_page import GRAPH_POINTS, SIMULATED_NAME, GameSpec
+from neurodac.acquisition import Quality, SignalState
+from neurodac.game_page import (
+    BRIDGE_SOURCE,
+    GRAPH_MS,
+    GRAPH_POINTS,
+    QUALITY_MS,
+    SIMULATED_NAME,
+    GameSpec,
+    bridge_payload,
+    idle_payload,
+    stopped_outputs,
+)
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets" / "games"
+
+#: Scripts que un juego carga por `src`; el contrato puede vivir en ellos.
+SCRIPT_SRC = re.compile(r'<script\b[^>]*\bsrc="([^"]+)"', re.IGNORECASE)
+
+
+def local_scripts(html_path: Path) -> list[Path]:
+    """Scripts locales referenciados por un HTML, en el orden en que se cargan."""
+    text = html_path.read_text(encoding="utf-8")
+    return [
+        (html_path.parent / src).resolve()
+        for src in SCRIPT_SRC.findall(text)
+        if "://" not in src and not src.startswith("//")
+    ]
+
 
 SPECS = {
     "jardin": GameSpec(
@@ -95,7 +120,16 @@ class TestAssetsExist(unittest.TestCase):
             with self.subTest(juego=name):
                 self.assertTrue(text.lstrip().startswith("<!DOCTYPE html>"))
                 self.assertIn("</html>", text)
-                self.assertEqual(text.count("<script>"), text.count("</script>"))
+                # Una apertura con atributos, como <script src="...">, tambien
+                # cuenta; comparar el literal "<script>" fallaria con el motor.
+                self.assertEqual(len(re.findall(r"<script\b", text)), text.count("</script>"))
+
+    def test_referenced_scripts_exist(self):
+        # Un script local que falta deja el juego en blanco sin error visible.
+        for name, spec in SPECS.items():
+            for script in local_scripts(ASSETS.parent / spec.asset):
+                with self.subTest(juego=name, script=script.name):
+                    self.assertTrue(script.is_file(), f"falta {script}")
 
     def test_asset_url_is_served_by_dash(self):
         for name, spec in SPECS.items():
@@ -107,7 +141,15 @@ class TestBridgeContract(unittest.TestCase):
     """Lo que la pagina manda y lo que el juego escucha deben coincidir."""
 
     def _source(self, spec: GameSpec) -> str:
-        return (ASSETS.parent / spec.asset).read_text(encoding="utf-8")
+        """HTML del juego mas los scripts locales que carga.
+
+        El contrato puede vivir en el motor compartido y no en el HTML; leer
+        solo el HTML haria fallar estas pruebas sin que el contrato se rompa.
+        """
+        html_path = ASSETS.parent / spec.asset
+        parts = [html_path.read_text(encoding="utf-8")]
+        parts += [p.read_text(encoding="utf-8") for p in local_scripts(html_path) if p.is_file()]
+        return "\n".join(parts)
 
     def test_every_game_listens_for_messages(self):
         for name, spec in SPECS.items():
@@ -182,7 +224,9 @@ class TestLayout(unittest.TestCase):
             "status",
             "quality",
             "interval",
+            "quality-interval",
             "store",
+            "sim",
         ):
             with self.subTest(componente=suffix):
                 self.assertIn(f"prueba-{suffix}", found)
@@ -219,6 +263,120 @@ class TestLayout(unittest.TestCase):
             node for node in walk(build(spec)()) if getattr(node, "id", None) == "puente-bridge"
         )
         self.assertFalse(store.data["ready"])
+        self.assertIsNone(store.data["signalValue"])
+        self.assertEqual(store.data, idle_payload())
+
+    def test_graph_is_above_the_connection_panel(self):
+        from neurodac.game_page import build
+
+        spec = GameSpec(
+            prefix="orden",
+            path="/orden",
+            title="Orden",
+            asset="games/jardin.html",
+            signal="meditation",
+            keys=(),
+        )
+        order = [getattr(n, "id", None) for n in walk(build(spec)())]
+        self.assertLess(order.index("orden-graph"), order.index("orden-connect"))
+
+    def test_two_cadences(self):
+        from neurodac.game_page import build
+
+        spec = GameSpec(
+            prefix="cadencia",
+            path="/cadencia",
+            title="Cadencia",
+            asset="games/jardin.html",
+            signal="meditation",
+            keys=(),
+        )
+        intervals = {
+            n.id: n.interval for n in walk(build(spec)()) if type(n).__name__ == "Interval"
+        }
+        self.assertEqual(intervals["cadencia-interval"], GRAPH_MS)
+        self.assertEqual(intervals["cadencia-quality-interval"], QUALITY_MS)
+        self.assertLess(GRAPH_MS, QUALITY_MS)
+
+    def test_sim_badge_starts_hidden(self):
+        from neurodac.game_page import build
+
+        spec = GameSpec(
+            prefix="aviso",
+            path="/aviso",
+            title="Aviso",
+            asset="games/jardin.html",
+            signal="meditation",
+            keys=(),
+        )
+        badge = next(n for n in walk(build(spec)()) if getattr(n, "id", None) == "aviso-sim")
+        self.assertIn("d-none", badge.className)
+
+
+def quality(signal_state: SignalState) -> Quality:
+    return Quality(
+        state=signal_state,
+        poor_signal=0,
+        packet_rate_hz=1.0,
+        seconds_since_last_packet=0.2,
+        calibration_progress=1.0,
+        packets_ok=10,
+        packets_bad_checksum=0,
+        bytes_discarded=0,
+        error=None,
+    )
+
+
+class TestBridgePayload(unittest.TestCase):
+    """Lo que la pagina manda al juego, sin navegador."""
+
+    def test_ready_with_a_value(self):
+        payload = bridge_payload(quality(SignalState.READY), 63, simulated=False)
+        self.assertTrue(payload["ready"])
+        self.assertEqual(payload["signalValue"], 63.0)
+        self.assertEqual(payload["source"], BRIDGE_SOURCE)
+
+    def test_ready_state_without_a_value_is_not_ready(self):
+        # La sesion puede quedar lista antes del primer paquete eSense.
+        payload = bridge_payload(quality(SignalState.READY), None, simulated=False)
+        self.assertFalse(payload["ready"])
+        self.assertIsNone(payload["signalValue"])
+
+    def test_absence_is_never_a_number(self):
+        for signal_state in SignalState:
+            payload = bridge_payload(quality(signal_state), None, simulated=False)
+            with self.subTest(estado=signal_state.value):
+                self.assertIsNone(payload["signalValue"])
+
+    def test_not_ready_in_any_other_state(self):
+        for signal_state in SignalState:
+            if signal_state is SignalState.READY:
+                continue
+            payload = bridge_payload(quality(signal_state), 70, simulated=False)
+            with self.subTest(estado=signal_state.value):
+                self.assertFalse(payload["ready"])
+
+    def test_simulated_flag_travels(self):
+        self.assertTrue(bridge_payload(quality(SignalState.READY), 70, simulated=True)["simulated"])
+
+    def test_idle_payload(self):
+        payload = idle_payload()
+        self.assertFalse(payload["ready"])
+        self.assertIsNone(payload["signalValue"])
+        self.assertFalse(payload["simulated"])
+
+    def test_stop_tells_the_game_to_stop(self):
+        # Antes, Detener apagaba la grafica pero el juego conservaba el ultimo
+        # ready: true y seguia corriendo con la senal congelada.
+        status, fast_off, slow_off, store, bridge, gate, gate_class = stopped_outputs(
+            "Detenido.", "secondary"
+        )
+        self.assertTrue(fast_off)
+        self.assertTrue(slow_off)
+        self.assertIsNone(store)
+        self.assertEqual(bridge, idle_payload())
+        self.assertIsNotNone(gate)
+        self.assertEqual(gate_class, "nd-gate")
 
 
 class TestConstants(unittest.TestCase):

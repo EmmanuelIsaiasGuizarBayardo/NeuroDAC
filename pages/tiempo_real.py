@@ -15,7 +15,7 @@ from dash import Input, Output, State, dcc, html, no_update
 from neurodac.acquisition import registry, validate_signal_type
 from neurodac.content import signal as signal_text
 from neurodac.simulator import SimulatedSource
-from neurodac.ui import PanelIds, connection_panel, render_quality
+from neurodac.ui import PanelIds, connection_panel, render_quality, sim_badge, sim_badge_class
 
 dash.register_page(__name__, path="/tiempo-real", name="Tiempo Real")
 
@@ -93,7 +93,11 @@ layout = html.Div(
                     width=8,
                     children=html.Div(
                         className="graph-container",
-                        children=dcc.Graph(id="rt-graph", style={"height": "70vh"}),
+                        style={"position": "relative"},
+                        children=[
+                            dcc.Graph(id="rt-graph", style={"height": "70vh"}),
+                            sim_badge("rt-sim"),
+                        ],
                     ),
                 ),
             ]
@@ -125,6 +129,12 @@ def update_signal_info(signal_type: str):
         html.H6(signal_type.capitalize()),
         html.P(signal_text(signal_type), style={"fontSize": "0.88rem"}),
     ]
+
+
+@dash.callback(Output("rt-sim", "className"), Input(IDS.store, "data"))
+def show_sim_badge(name):
+    """El aviso sale del nombre de la sesion activa: no puede desincronizarse."""
+    return sim_badge_class(name == SIM_NAME)
 
 
 @dash.callback(
