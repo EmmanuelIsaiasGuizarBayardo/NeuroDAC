@@ -23,6 +23,9 @@
       { name: 'foliage', colors: ['#1e3b2e', '#2e5e3c', '#4b8a42', '#88b85a'] },
       { name: 'wood', colors: ['#3a2820', '#5c3f2e', '#866044'] },
       { name: 'soil', colors: ['#2a1d1c', '#4a3228', '#6c4a36'] },
+      // Pasto amarillo verdoso, distinto del follaje azul verdoso: asi los
+      // tallos no se pierden contra la pradera.
+      { name: 'grass', colors: ['#45591f', '#76902e', '#b4c24e'] },
 
       // Una rampa por especie de flor: las variantes son intercambiar rampa.
       { name: 'petalRose', colors: ['#7a2848', '#c4567c', '#f29ab6'] },
@@ -31,8 +34,8 @@
       { name: 'petalViolet', colors: ['#4a2a6e', '#8a54b8', '#c8a2ea'] },
       { name: 'petalWhite', colors: ['#6c6878', '#b8b4c6', '#f2eee6'] },
 
-      { name: 'asphalt', colors: ['#26262e', '#3a3a46', '#565664', '#848494'] },
-      { name: 'paint', colors: ['#b8b4a6', '#e6e2d6'] },
+      // La pintura de carril usa la rampa del petalo blanco, casi identica.
+      { name: 'asphalt', colors: ['#2a2a33', '#45454f', '#6e6e7c'] },
 
       // Celeste y naranja DUNNE como acentos, no como dominantes.
       { name: 'celeste', colors: ['#1f5a7a', '#4da8da', '#a8dcf4'] },

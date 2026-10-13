@@ -17,6 +17,7 @@ const zlib = require('zlib');
 
 const E = require('../assets/games/engine.js');
 const { SPEC, PETAL_RAMPS } = require('../assets/games/palette.js');
+const ESC = require('../assets/games/escenarios.js');
 
 const OUT = process.argv[2] || path.join('results', 'capturas');
 const W = 240;
@@ -105,44 +106,60 @@ const MAT = {
   leaf: E.material(R.foliage),
   center: E.material(R.orange, { spec: 0.08, specIndex: R.petalGold[2] }),
   bubble: E.material(R.celeste, { spec: 0.1, specIndex: WHITE }),
-  ridgeFar: E.material(R.sky, { baseTone: 1 }),
-  ridgeNear: E.material(R.sky, { baseTone: 2 }),
   petals: PETAL_RAMPS.map((name) => E.material(R[name], { spec: 0.025, specIndex: WHITE })),
 };
 
 const frame = E.createFrame(W, H, INK);
+const HORIZON = 116;
+const BED_TOP = 146;
+const SCENES = ESC.createAll(E, pal);
+// Silueta del escenario: se pinta una vez por escenario, no por cuadro.
+const backdrop = E.createFrame(W, H);
+let backdropScene = -1;
 const SPR_W = 44;
 const SPR_H = 84;
 const sprite = E.createFrame(SPR_W, SPR_H);
 const scratch = new Uint8Array(SPR_W * SPR_H);
 
 function drawSky(f) {
-  const horizon = 118;
-  for (let y = 0; y < horizon; y++) {
+  for (let y = 0; y < HORIZON; y++) {
     // Oscuro arriba, calido hacia el horizonte: un crepusculo.
-    const value = (y / horizon) * (R.sky.length - 1);
+    const value = (y / HORIZON) * (R.sky.length - 1);
     for (let x = 0; x < f.w; x++) f.px[y * f.w + x] = E.ditherTone(R.sky, value, x, y);
   }
 }
 
-function drawRidges(f) {
-  // Siluetas lejanas en tonos de cielo: profundidad sin salir de la rampa.
-  E.triangle(f, MAT.ridgeFar, 50, -20, 126, 70, 64, 140, 126);
-  // Mismo identificador que la anterior: el contorno interior separa piezas
-  // de primer plano, pero en el fondo marcaria una grieta entre montanas.
-  E.triangle(f, MAT.ridgeNear, 50, 90, 126, 150, 80, 220, 126);
+function drawBackdrop(f, scene) {
+  if (backdropScene !== scene) {
+    E.clearFrame(backdrop, E.TRANSPARENT);
+    SCENES[scene].draw(backdrop, HORIZON);
+    backdropScene = scene;
+  }
+  E.blit(f, backdrop, 0, 0);
 }
 
 function drawGround(f) {
-  for (let y = 118; y < f.h - 6; y++) {
-    const value = 2 - ((y - 118) / (f.h - 124)) * 2;
+  // Pradera: el pasto da la vida; la cama de tierra al frente conserva el
+  // contraste de los tallos, que tambien son verdes.
+  for (let y = HORIZON; y < BED_TOP; y++) {
+    const value = 0.4 + ((y - HORIZON) / (BED_TOP - HORIZON)) * 1.8;
     for (let x = 0; x < f.w; x++) {
-      // Borde ondulado del terreno, hecho con la misma funcion que el tramado.
-      const edge = 118 + Math.round(Math.sin(x * 0.07) * 2);
-      if (y < edge) continue;
-      // Dos filas de pasto en el borde: el suelo se lee como jardin.
-      f.px[y * f.w + x] =
-        y - edge < 2 ? R.foliage[y - edge] : E.ditherTone(R.soil, value, x, y);
+      let v = E.ditherTone(R.grass, value, x, y);
+      // Matas sueltas de pasto claro, sin aleatoriedad: salen del tramado.
+      if (E.bayer(x * 3, y * 5) > 0.93 && y > HORIZON + 3) v = R.grass[2];
+      f.px[y * f.w + x] = v;
+    }
+  }
+  for (let y = BED_TOP; y < f.h - 6; y++) {
+    const value = 2 - ((y - BED_TOP) / (f.h - 6 - BED_TOP)) * 2;
+    for (let x = 0; x < f.w; x++) {
+      const edge = BED_TOP + Math.round(Math.sin(x * 0.07) * 1.5);
+      if (y < edge) {
+        f.px[y * f.w + x] = R.grass[1];
+        continue;
+      }
+      // Borde de la cama: una fila de pasto oscuro y luego tierra tramada.
+      f.px[y * f.w + x] = y - edge < 1 ? R.grass[0] : E.ditherTone(R.soil, value, x, y);
     }
   }
 }
@@ -185,9 +202,9 @@ function drawPollen(f) {
 
 function drawLabels(f) {
   E.text(f, 'MEDITACI\u00D3N', 7, 9, INK);
-  E.text(f, 'MEDITACI\u00D3N', 6, 8, R.paint[1]);
+  E.text(f, 'MEDITACI\u00D3N', 6, 8, R.petalWhite[2]);
   E.number(f, 72, 6 + E.textWidth('MEDITACI\u00D3N ') + 1, 8, R.orange[2]);
-  E.text(f, '\u00A1LISTA! \u00BFA\u00DAN? \u00D1AND\u00DA 4/10 %', 6, 18, R.paint[1]);
+  E.text(f, '\u00A1LISTA! \u00BFA\u00DAN? \u00D1AND\u00DA 4/10 %', 6, 18, R.petalWhite[2]);
   E.text(f, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789', 6, 26, R.petalWhite[2]);
 }
 
@@ -196,15 +213,15 @@ function drawSwatches(f) {
   for (let i = 0; i < pal.count; i++) E.rect(f, i * w, f.h - 5, w, 5, i);
 }
 
-function render(theme) {
+function render(theme, scene) {
   E.clearFrame(frame, INK);
   drawSky(frame);
-  drawRidges(frame);
+  drawBackdrop(frame, scene || 0);
   drawGround(frame);
 
   for (let s = 0; s < PETAL_RAMPS.length; s++) {
     drawFlower(sprite, s, (s - 2) * 2, Math.min(4, s + 1));
-    E.blit(frame, sprite, 2 + s * 46, 118 - SPR_H + 10);
+    E.blit(frame, sprite, 2 + s * 46, BED_TOP + 12 - SPR_H);
   }
 
   drawPollen(frame);
@@ -224,18 +241,25 @@ if (require.main === module) {
   const seen = new Uint8Array(256);
   const report = [];
 
-  for (const theme of ['dark', 'light']) {
-    const rgb = render(theme);
+  function capture(name, theme, scene) {
+    const rgb = render(theme, scene);
     const distinct = E.countColors(frame, seen);
     let outside = 0;
     for (let i = 0; i < frame.px.length; i++) if (frame.px[i] >= pal.count) outside++;
-
     writePNG(
-      path.join(OUT, `motor_${theme}.png`),
+      path.join(OUT, `${name}.png`),
       W * SCALE, H * SCALE, upscale(frame.px, W, H, SCALE), rgb, pal.count
     );
-    report.push({ theme, distinct, outside });
+    report.push({ theme: name, distinct, outside });
   }
+
+  capture('motor_dark', 'dark', 0);
+  capture('motor_light', 'light', 0);
+  // Un cuadro por escenario, para revisar cada fondo en ambos temas.
+  SCENES.forEach((scene, i) => {
+    capture(`escena_${scene.id}_dark`, 'dark', i);
+    capture(`escena_${scene.id}_light`, 'light', i);
+  });
 
   // Acercamiento 1:1 a un sprite, sin recortarlo: el sprite completo cabe.
   drawFlower(sprite, 0, 2, 4);
@@ -249,7 +273,7 @@ if (require.main === module) {
   console.log(`paleta: ${pal.count} colores`);
   for (const r of report) {
     console.log(
-      `  ${r.theme.padEnd(5)}  colores distintos en el cuadro: ${r.distinct}` +
+      `  ${r.theme.padEnd(24)} colores distintos en el cuadro: ${r.distinct}` +
         `  |  pixeles fuera de paleta: ${r.outside}`
     );
   }
