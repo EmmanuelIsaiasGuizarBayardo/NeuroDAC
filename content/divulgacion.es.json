@@ -113,15 +113,27 @@
         "vida": "Vida",
         "completo": "¡Jardín completo!",
         "marchita": "La flor se marchitó",
-        "teclado": "Sin diadema: usa las flechas"
+        "teclado": "Sin diadema: usa las flechas",
+        "tiempo": "Tiempo",
+        "mejor": "Mejor"
       }
     },
     "carrera": {
       "titulo": "Cómo funciona",
       "parrafos": [
         "La Carrera Neural es un ejercicio de *neurofeedback* basado en atención. La señal de atención de la diadema controla la velocidad del coche: a mayor concentración sostenida, más rápido avanza. Las flechas cambian de carril para esquivar obstáculos, y chocar cuesta velocidad durante unos segundos.",
-        "El coche gris es el rival, que avanza a velocidad constante. Como el juego no arranca hasta que la señal sirve, nadie empieza la carrera con medio kilómetro de desventaja; volver de una caída reinicia la carrera en lugar de continuarla perdida."
-      ]
+        "El coche translúcido es el rival, que avanza siempre a la misma velocidad. Para ganarle hay que sostener una atención un poco por encima de lo habitual: la raya en la barra de atención marca a partir de dónde vas más rápido que él. La carrera termina en la meta, a un kilómetro, y el reloj solo cuenta el tiempo en que la diadema estuvo leyendo bien."
+      ],
+      "pantalla": {
+        "atencion": "Atención",
+        "meta": "Meta",
+        "rival": "Rival",
+        "gano": "¡Ganaste!",
+        "segundo": "Segundo lugar",
+        "tiempo": "Tiempo",
+        "mejor": "Mejor",
+        "teclado": "Sin diadema: usa W y S"
+      }
     }
   },
   "manual": {

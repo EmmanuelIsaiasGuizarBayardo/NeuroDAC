@@ -21,7 +21,8 @@ assets/games/
 ├── textos.js       # generado desde content/; no se edita a mano
 ├── jardin.js       # lógica de Jardín; corre en el navegador y en Node
 ├── jardin.html     # cascarón: carga los módulos y conecta el bucle
-└── carrera.html
+├── carrera.js      # lógica de Carrera; corre en el navegador y en Node
+└── carrera.html    # cascarón de Carrera
 ```
 
 Dash inyecta en la página principal todo `.js` que encuentre bajo `assets/`,
@@ -50,6 +51,14 @@ El factor solo baja si el juego no cupiera en la pantalla y hubiera que
 desplazarse para verlo. Para que la aparición de la barra de desplazamiento no
 angoste la columna y produzca un vaivén, la página reserva su espacio con
 `scrollbar-gutter: stable`.
+
+Si declara también `logical_height_max`, el juego **llena los dos ejes**:
+el factor es el mayor que deja ambos lados dentro de su mínimo, y el juego
+dibuja tantas columnas y filas como quepan. Con la ventana más alta se ve más
+juego, no píxeles más grandes. Carrera va de 144×192 a 176×288: en pantalla
+completa se ve más carretera por delante. Aquí el motor puede elegir un factor
+distinto al de la página; la prueba no exige que coincidan, exige que el
+juego llene su lienzo sin franja y con su tamaño dentro de los límites.
 
 La tolerancia del redondeo va en píxeles de dispositivo, no como fracción del
 factor: con densidad 1.75 y factor 11, el punto flotante da 1979.999 por 1980,
@@ -158,11 +167,27 @@ otras.
 | G Z H | rejilla, acercamiento y hoja de sprites; solo modo autónomo |
 | B     | siguiente escenario de Jardín; solo modo autónomo    |
 
-Jardín no atiende ninguna tecla dentro de la aplicación: la señal viene solo de
+Carrera atiende ← → dentro de la aplicación, porque cambiar de carril es la
+jugabilidad. W y S, que simulan la atención, solo existen abierto fuera de
+ella. Jardín no atiende ninguna tecla dentro de la aplicación: la señal viene solo de
 la diadema o de la fuente simulada, que se declara en pantalla. Si las flechas
 la alteraran, lo mostrado aparentaría ser meditación sin serlo. Un juego sobre
 el motor declara sus teclas en `KEYS_USED`, y una prueba exige que coincidan
 exactamente con las de su `GameSpec`.
+
+## Reloj del reto
+
+Cada juego mide cuánto tarda el visitante en completar su reto: las cinco
+flores en Jardín, la meta en Carrera. El reloj corre en el marcador y, al
+terminar, el aviso final muestra el tiempo y el mejor de la sesión, para que
+los visitantes se comparen.
+
+**El reloj solo cuenta el tiempo en que el juego avanza.** Si la compuerta se
+cierra a media partida, por ejemplo porque la diadema perdió contacto, el
+reloj se detiene con ella. Contar ese tiempo castigaría un mal contacto, no la
+atención ni la meditación. El mejor tiempo es de la sesión: se pierde al
+recargar la página. Los arneses verifican que el reloj no corra con la
+compuerta cerrada ni durante una pausa, y que el tiempo guardado sea el jugado.
 
 ## Reglas de render
 
@@ -183,6 +208,7 @@ Las garantiza el motor si se usa como está:
 ```powershell
 node tools/capturas_motor.js
 node tools/capturas_jardin.js
+node tools/capturas_carrera.js
 uv run pytest tests/test_motor.py tests/test_game_page.py -q
 ```
 

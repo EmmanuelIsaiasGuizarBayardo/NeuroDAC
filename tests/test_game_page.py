@@ -61,7 +61,7 @@ SPECS = {
         title="Carrera Neural",
         asset="games/carrera.html",
         signal="attention",
-        keys=("ArrowLeft", "ArrowRight", "w", "W", "s", "S"),
+        keys=("ArrowLeft", "ArrowRight"),
     ),
 }
 
@@ -351,6 +351,28 @@ class TestLayout(unittest.TestCase):
         )
         self.assertEqual(width_max, max_w)
 
+    def test_carrera_logical_size_matches_the_game(self):
+        # Carrera llena su recuadro en ambos ejes: los cuatro limites deben
+        # ser los mismos en la pagina y en el juego.
+        import ast
+
+        page = (ASSETS.parent.parent / "pages" / "carrera.py").read_text(encoding="utf-8")
+        declared = {
+            kw.arg: ast.literal_eval(kw.value)
+            for node in ast.walk(ast.parse(page))
+            if isinstance(node, ast.Call)
+            for kw in node.keywords
+            if kw.arg in ("logical_size", "logical_width_max", "logical_height_max")
+        }
+        game = (ASSETS / "carrera.js").read_text(encoding="utf-8")
+
+        def const(name):
+            return int(re.search(rf"const {name} = (\d+);", game).group(1))
+
+        self.assertEqual(tuple(declared["logical_size"]), (const("MIN_W"), const("MIN_H")))
+        self.assertEqual(declared["logical_width_max"], const("MAX_W"))
+        self.assertEqual(declared["logical_height_max"], const("MAX_H"))
+
     def test_container_exposes_the_logical_size(self):
         from neurodac.game_page import build
 
@@ -382,6 +404,18 @@ class TestLayout(unittest.TestCase):
             )
         )
         self.assertEqual(ancho.to_plotly_json()["props"]["data-lwmax"], "360")
+        self.assertNotIn("data-lhmax", ancho.to_plotly_json()["props"])
+        ambos = container(
+            GameSpec(
+                prefix="enc4",
+                path="/enc4",
+                logical_size=(144, 192),
+                logical_width_max=176,
+                logical_height_max=288,
+                **base,
+            )
+        )
+        self.assertEqual(ambos.to_plotly_json()["props"]["data-lhmax"], "288")
         sin = container(GameSpec(prefix="enc2", path="/enc2", **base))
         self.assertNotIn("data-lw", sin.to_plotly_json()["props"])
 

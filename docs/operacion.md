@@ -93,7 +93,7 @@ El juego no arranca hasta que la señal sirve. Antes de eso, un cero de "todaví
 
 La Carrera Neural es un ejercicio de *neurofeedback* basado en atención. La señal de atención de la diadema controla la velocidad del coche: a mayor concentración sostenida, más rápido avanza. Las flechas cambian de carril para esquivar obstáculos, y chocar cuesta velocidad durante unos segundos.
 
-El coche gris es el rival, que avanza a velocidad constante. Como el juego no arranca hasta que la señal sirve, nadie empieza la carrera con medio kilómetro de desventaja; volver de una caída reinicia la carrera en lugar de continuarla perdida.
+El coche translúcido es el rival, que avanza siempre a la misma velocidad. Para ganarle hay que sostener una atención un poco por encima de lo habitual: la raya en la barra de atención marca a partir de dónde vas más rápido que él. La carrera termina en la meta, a un kilómetro, y el reloj solo cuenta el tiempo en que la diadema estuvo leyendo bien.
 
 ## Tipos de señal
 

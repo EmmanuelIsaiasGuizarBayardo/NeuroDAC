@@ -8,7 +8,7 @@
 'use strict';
 
 const path = require('path');
-const { encuadre, encuadreAncho } = require(path.resolve(__dirname, '..', '..', 'assets', 'encuadre.js'));
+const { encuadre, encuadreAncho, encuadreLlenar } = require(path.resolve(__dirname, '..', '..', 'assets', 'encuadre.js'));
 const E = require(path.resolve(__dirname, '..', '..', 'assets', 'games', 'engine.js'));
 
 const fallas = [];
@@ -83,6 +83,40 @@ for (const dpr of DENSIDADES) {
         }
         if (posible && (Math.abs(cw - m.w * m.scale) > 2 || Math.abs(ch - LH * m.scale) > 2)) {
           fallas.push(`${et} (corto ${corto}): franja de ${cw - m.w * m.scale}x${ch - LH * m.scale}`);
+        }
+      }
+    }
+  }
+}
+
+/* Modo que llena ancho y alto: Carrera, 144-176 x 192-288. */
+const C = { minW: 144, maxW: 176, minH: 192, maxH: 288 };
+for (const dpr of DENSIDADES) {
+  for (let availW = 160; availW <= 1100; availW += 19) {
+    for (let availH = 200; availH <= 1300; availH += 37) {
+      casos++;
+      const r = encuadreLlenar(availW, availH, dpr, C.minW, C.maxW, C.minH, C.maxH);
+      const et = `llenar dpr ${dpr} espacio ${availW}x${availH}`;
+      const posible = availW * dpr >= C.minW && availH * dpr >= C.minH;
+      if (posible && (r.width > availW + 1e-9 || r.height > availH + 1e-9)) {
+        fallas.push(`${et}: se sale del espacio`);
+      }
+      // Llena cada eje salvo cuando topa con su maximo.
+      const s = r.scale;
+      if (posible && r.lw < C.maxW && availW * dpr - r.lw * s >= s) fallas.push(`${et}: sobra ancho`);
+      if (posible && r.lh < C.maxH && availH * dpr - r.lh * s >= s) fallas.push(`${et}: sobra alto`);
+      for (const corto of [0, 1]) {
+        const cw = Math.floor(r.width * dpr) - corto;
+        const ch = Math.floor(r.height * dpr) - corto;
+        const m = E.fitBoth(cw, ch, C.minW, C.maxW, C.minH, C.maxH);
+        // El motor puede elegir otro factor que la pagina: lo que se exige es
+        // que su tamano quede en rango y llene el lienzo sin franja visible.
+        if (m.w < C.minW || m.w > C.maxW || m.h < C.minH || m.h > C.maxH) {
+          fallas.push(`${et} (corto ${corto}): tamano fuera de rango ${m.w}x${m.h}`);
+        }
+        const tol = Math.max(2, m.scale >> 1);
+        if (posible && (Math.abs(cw - m.w * m.scale) > tol || Math.abs(ch - m.h * m.scale) > tol)) {
+          fallas.push(`${et} (corto ${corto}): franja de ${cw - m.w * m.scale}x${ch - m.h * m.scale}`);
         }
       }
     }

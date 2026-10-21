@@ -12,7 +12,19 @@
       "vida": "Vida",
       "completo": "¡Jardín completo!",
       "marchita": "La flor se marchitó",
-      "teclado": "Sin diadema: usa las flechas"
+      "teclado": "Sin diadema: usa las flechas",
+      "tiempo": "Tiempo",
+      "mejor": "Mejor"
+    },
+    "carrera": {
+      "atencion": "Atención",
+      "meta": "Meta",
+      "rival": "Rival",
+      "gano": "¡Ganaste!",
+      "segundo": "Segundo lugar",
+      "tiempo": "Tiempo",
+      "mejor": "Mejor",
+      "teclado": "Sin diadema: usa W y S"
     }
   };
 

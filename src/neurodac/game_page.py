@@ -103,6 +103,9 @@ class GameSpec:
     logical_width_max : int, optional
         Si se da, `logical_size` es el ancho minimo y el juego llena el ancho
         de su recuadro: dibuja tantas columnas como quepan hasta este maximo.
+    logical_height_max : int, optional
+        Junto con `logical_width_max`, el juego llena tambien el alto: dibuja
+        tantas filas como quepan. Con la ventana mas alta se ve mas juego.
     """
 
     prefix: str
@@ -116,6 +119,7 @@ class GameSpec:
     canvas_height: str = "66vh"
     logical_size: tuple[int, int] | None = None
     logical_width_max: int | None = None
+    logical_height_max: int | None = None
 
 
 def build(spec: GameSpec) -> callable:
@@ -361,6 +365,8 @@ def _frame_data(spec: GameSpec) -> dict:
     data = {"data-lw": str(lw), "data-lh": str(lh), "data-maxh": spec.canvas_height}
     if spec.logical_width_max is not None:
         data["data-lwmax"] = str(spec.logical_width_max)
+    if spec.logical_height_max is not None:
+        data["data-lhmax"] = str(spec.logical_height_max)
     return data
 
 

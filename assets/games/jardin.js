@@ -53,7 +53,8 @@
   const BANNER_NONE = 0;
   const BANNER_DONE = 1;
   const BANNER_WILT = 2;
-  const DONE_TICKS = 210;
+  // Seis segundos: el aviso final muestra el tiempo y hay que alcanzar a leerlo.
+  const DONE_TICKS = 360;
   const WILT_TICKS = 150;
 
   /** Matas de pasto en la cama de tierra; reaccionan a la vida. */
@@ -234,6 +235,12 @@
       zoom: false,
       sheet: false,
       lastSignal: NaN,
+      // Reloj del reto: cuenta solo los ticks en que el juego avanza. Si la
+      // compuerta se cierra, se detiene con ella; contar ese tiempo castigaria
+      // un mal contacto, no la meditacion.
+      playTicks: 0,
+      lastSeconds: -1,
+      bestSeconds: -1,
     };
 
     drawGround(ground);
@@ -260,6 +267,7 @@
       placeTufts();
       g.current = 0;
       g.done = 0;
+      g.playTicks = 0;
       g.banner = BANNER_NONE;
       g.bannerTicks = 0;
       pollen.count = 0;
@@ -362,6 +370,8 @@
         } else {
           g.banner = BANNER_DONE;
           g.bannerTicks = DONE_TICKS;
+          g.lastSeconds = Math.floor(g.playTicks / 60);
+          if (g.bestSeconds < 0 || g.lastSeconds < g.bestSeconds) g.bestSeconds = g.lastSeconds;
         }
         g.animDirty = true;
       }
@@ -412,6 +422,7 @@
       if (g.banner !== BANNER_NONE) {
         if (--g.bannerTicks <= 0) resetGarden(true);
       } else if (ready && valid) {
+        g.playTicks++;
         grow(sig);
       }
 
@@ -604,17 +615,49 @@
       const vx = W - 5 - vw;
       shadowText(f, TXT.vida, vx - E.textWidth(TXT.vida) - 4, 5, LABEL);
       bar(f, vx, 6, vw, g.health[i], R.grass[2]);
+
+      // Reloj del reto, alineado a la derecha, y el mejor de la sesion.
+      const t = Math.floor(g.playTicks / 60);
+      clockRight(f, TXT.tiempo, t, W - 5, 14, LABEL);
+      if (g.bestSeconds >= 0) clockRight(f, TXT.mejor, g.bestSeconds, W - 5, 23, R.petalWhite[1]);
+    }
+
+    /** Etiqueta y reloj alineados a la derecha en x. */
+    function clockRight(f, label, seconds, x, y, color) {
+      const cw = E.clockWidth(seconds);
+      const lx = x - cw - 4 - E.textWidth(label);
+      shadowText(f, label, lx, y, color);
+      E.clock(f, seconds, x - cw + 1, y + 1, INK);
+      E.clock(f, seconds, x - cw, y, R.orange[2]);
     }
 
     function drawBanner(f) {
-      const msg = g.banner === BANNER_DONE ? TXT.completo : TXT.marchita;
-      const bw = E.textWidth(msg) + 14;
+      const done = g.banner === BANNER_DONE;
+      const msg = done ? TXT.completo : TXT.marchita;
+      // Al completar, el tiempo del reto y el mejor de la sesion.
+      const lines = done ? (g.bestSeconds >= 0 && g.bestSeconds < g.lastSeconds ? 3 : 2) : 1;
+      const timeW = E.textWidth(TXT.tiempo) + 4 + E.clockWidth(g.lastSeconds);
+      const bestW = E.textWidth(TXT.mejor) + 4 + E.clockWidth(g.bestSeconds);
+      const bw = Math.max(E.textWidth(msg), done ? timeW : 0, lines === 3 ? bestW : 0) + 14;
+      const bh = 6 + lines * 9;
       const bx = (W - bw) >> 1;
-      const by = 52;
-      E.applyLUT(f, DARKEN, bx, by, bw, 15);
+      const by = 48;
+      // Dos pasadas: con tres lineas el aviso cae sobre las flores y un solo
+      // oscurecimiento no separaba el texto de los petalos.
+      E.applyLUT(f, DARKEN, bx, by, bw, bh);
+      E.applyLUT(f, DARKEN, bx, by, bw, bh);
       E.rect(f, bx, by, bw, 1, R.orange[1]);
-      E.rect(f, bx, by + 14, bw, 1, R.orange[1]);
-      shadowText(f, msg, bx + 7, by + 5, LABEL);
+      E.rect(f, bx, by + bh - 1, bw, 1, R.orange[1]);
+      shadowText(f, msg, (W - E.textWidth(msg)) >> 1, by + 5, LABEL);
+      if (done) {
+        let x = shadowText(f, TXT.tiempo, (W - timeW) >> 1, by + 14, LABEL) + 3;
+        E.clock(f, g.lastSeconds, x + 1, by + 15, INK);
+        E.clock(f, g.lastSeconds, x, by + 14, R.orange[2]);
+        if (lines === 3) {
+          x = shadowText(f, TXT.mejor, (W - bestW) >> 1, by + 23, R.petalWhite[1]) + 3;
+          E.clock(f, g.bestSeconds, x, by + 23, R.petalWhite[1]);
+        }
+      }
     }
 
     function drawPollen(f) {

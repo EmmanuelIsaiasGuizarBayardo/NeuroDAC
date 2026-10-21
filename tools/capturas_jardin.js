@@ -253,6 +253,48 @@ fs.mkdirSync(OUT, { recursive: true });
   check(ctx.game.W === 240, 'ancho: no respeta el minimo');
 }
 
+/* ------------------------------------------------- reloj del reto */
+{
+  const ctx = fresh(true, 31);
+  const g = ctx.game.state;
+  // Con la compuerta cerrada el reloj no corre: no se castiga un mal contacto.
+  run(ctx, 900, 90, false);
+  check(g.playTicks === 0, `reloj: corrio con la compuerta cerrada (${g.playTicks} ticks)`);
+  // Un pausa a media partida tampoco cuenta.
+  run(ctx, 600, 90, true);
+  const antes = g.playTicks;
+  run(ctx, 600, 90, false);
+  check(g.playTicks === antes, 'reloj: corrio durante una pausa a media partida');
+
+  // Al completar el jardin queda el tiempo jugado, en segundos.
+  let t = 0;
+  while (g.banner !== 1 && t < 60 * 120) {
+    run(ctx, 1, 90, true);
+    t++;
+  }
+  check(g.banner === 1, 'reloj: el jardin no se completo');
+  const esperado = Math.floor(g.playTicks / 60);
+  check(g.lastSeconds === esperado, `reloj: guardo ${g.lastSeconds} s y se jugaron ${esperado} s`);
+  check(g.bestSeconds === g.lastSeconds, 'reloj: el primer tiempo no quedo como el mejor');
+  check(g.lastSeconds >= 25 && g.lastSeconds <= 45,
+    `reloj: ${g.lastSeconds} s para cinco flores con calma alta, fuera de lo esperado`);
+  run(ctx, 20, 90, true);
+  capture(ctx, 'jardin_tiempo');
+
+  // Un segundo jardin mas lento no reemplaza al mejor.
+  const mejor = g.bestSeconds;
+  run(ctx, 400, 90, true);
+  t = 0;
+  while (g.banner !== 1 && t < 60 * 240) {
+    run(ctx, 1, t % 900 < 300 ? 50 : 90, true);
+    t++;
+  }
+  check(g.bestSeconds === Math.min(mejor, g.lastSeconds), 'reloj: el mejor no es el minimo');
+  check(g.lastSeconds > mejor, 'reloj: el segundo jardin debia ser mas lento');
+  run(ctx, 20, 90, true);
+  capture(ctx, 'jardin_tiempo_y_mejor');
+}
+
 /* ------------------------------------------ rotacion de escenarios */
 {
   const ctx = fresh(true, 21);

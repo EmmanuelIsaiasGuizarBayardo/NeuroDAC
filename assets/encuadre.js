@@ -45,8 +45,24 @@
     return { scale: scale, lw: lw, width: (lw * scale) / dpr, height: (lh * scale) / dpr };
   }
 
+  /**
+   * Encuadre que llena ancho y alto: el juego admite un rango de columnas y
+   * uno de filas. El factor es el mayor que deja ambos lados dentro de su
+   * minimo, y el juego dibuja tantas columnas y filas como quepan. Con la
+   * ventana mas alta se ve mas juego, no pixeles mas grandes.
+   */
+  function encuadreLlenar(availW, availH, dpr, minW, maxW, minH, maxH) {
+    const scale = Math.max(
+      1,
+      Math.min(Math.floor((availW * dpr) / minW), Math.floor((availH * dpr) / minH))
+    );
+    const lw = Math.max(minW, Math.min(maxW, Math.floor((availW * dpr) / scale)));
+    const lh = Math.max(minH, Math.min(maxH, Math.floor((availH * dpr) / scale)));
+    return { scale: scale, lw: lw, lh: lh, width: (lw * scale) / dpr, height: (lh * scale) / dpr };
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { encuadre: encuadre, encuadreAncho: encuadreAncho };
+    module.exports = { encuadre: encuadre, encuadreAncho: encuadreAncho, encuadreLlenar: encuadreLlenar };
     return;
   }
 
@@ -76,7 +92,17 @@
       const by = sides(cs, 'borderTopWidth', 'borderBottomWidth');
       const availW = padre.clientWidth - sides(ps, 'paddingLeft', 'paddingRight') - bx;
       let r;
-      if (c.dataset.lwmax) {
+      if (c.dataset.lhmax) {
+        // Llena ancho y alto: el alto disponible es lo que queda de pantalla
+        // debajo de donde empieza el recuadro.
+        const top = c.getBoundingClientRect().top + root.scrollY;
+        const availH = root.innerHeight - top - 12 - by;
+        if (availW <= 0 || availH <= 0) continue;
+        r = encuadreLlenar(
+          availW, availH, dpr,
+          +c.dataset.lw, +c.dataset.lwmax, +c.dataset.lh, +c.dataset.lhmax
+        );
+      } else if (c.dataset.lwmax) {
         // Llena el ancho. El alto solo limita si el juego no cupiera en la
         // pantalla: lo que queda debajo de donde empieza el recuadro.
         const top = c.getBoundingClientRect().top + root.scrollY;

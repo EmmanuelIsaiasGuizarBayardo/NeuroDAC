@@ -25,11 +25,18 @@ SPEC = GameSpec(
     title="Carrera Neural",
     asset="games/carrera.html",
     signal="attention",
-    keys=("ArrowLeft", "ArrowRight", "w", "W", "s", "S"),
+    # Solo los carriles: W y S alterarian la atencion mostrada. Simulan la
+    # senal unicamente con el juego abierto fuera de la aplicacion.
+    keys=("ArrowLeft", "ArrowRight"),
     explanation=_explanation("carrera"),
     # El lienzo es angosto y alto: la carretera se lee mejor vertical.
     game_width=5,
     canvas_height="76vh",
+    # Las de assets/games/carrera.js: el juego llena su recuadro en ambos
+    # ejes; con la ventana mas alta se ve mas carretera por delante.
+    logical_size=(144, 192),
+    logical_width_max=176,
+    logical_height_max=288,
 )
 
 layout = build(SPEC)

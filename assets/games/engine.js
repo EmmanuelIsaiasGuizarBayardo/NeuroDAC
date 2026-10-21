@@ -668,6 +668,27 @@
     return x + digits * GLYPH_ADVANCE;
   }
 
+  /**
+   * Dibuja un tiempo en segundos como M:SS, digito por digito, sin construir
+   * strings. Devuelve la x donde termina.
+   */
+  function clock(f, seconds, x, y, index) {
+    const total = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(total / 60);
+    let cx = number(f, minutes, x, y, index);
+    drawGlyph(f, 58, cx, y, index); // ':'
+    cx += GLYPH_ADVANCE;
+    return number(f, total % 60, cx, y, index, 2);
+  }
+
+  /** Ancho en pixeles que ocupa `clock` para ese tiempo. */
+  function clockWidth(seconds) {
+    const minutes = Math.floor(Math.max(0, Math.floor(seconds)) / 60);
+    let digits = 1;
+    for (let p = 10; p <= minutes; p *= 10) digits++;
+    return (digits + 3) * GLYPH_ADVANCE - 1;
+  }
+
   /* ------------------------------------------------------------- particulas */
 
   /** Particulas en struct-of-arrays; se eliminan por swap-remove. */
@@ -794,6 +815,22 @@
     // en el borde.
     const w = Math.max(minW, Math.min(maxW, Math.floor(cw / scale + 0.5)));
     return { scale: scale, w: w };
+  }
+
+  /**
+   * Factor y tamano logico para llenar un lienzo de cw x ch pixeles de
+   * dispositivo cuando el juego admite un rango de ancho y uno de alto.
+   *
+   * El factor es el mayor que deja ambos lados dentro de su minimo; el tamano
+   * logico, cuantas columnas y filas caben a ese factor. Cualquier factor que
+   * cumpla eso llena el lienzo, asi que no necesita coincidir con el que eligio
+   * la pagina: solo necesita llenar sin franjas.
+   */
+  function fitBoth(cw, ch, minW, maxW, minH, maxH) {
+    const scale = Math.max(1, Math.floor(Math.min((cw + SLACK_PX) / minW, (ch + SLACK_PX) / minH)));
+    const w = Math.max(minW, Math.min(maxW, Math.floor(cw / scale + 0.5)));
+    const h = Math.max(minH, Math.min(maxH, Math.floor(ch / scale + 0.5)));
+    return { scale: scale, w: w, h: h };
   }
 
   /**
@@ -1053,6 +1090,8 @@
     textWidth: textWidth,
     unsupportedChar: unsupportedChar,
     number: number,
+    clock: clock,
+    clockWidth: clockWidth,
     createParticles: createParticles,
     spawnParticle: spawnParticle,
     updateParticles: updateParticles,
@@ -1062,6 +1101,7 @@
     createPresenter: createPresenter,
     integerScale: integerScale,
     fitWidth: fitWidth,
+    fitBoth: fitBoth,
     input: input,
     listen: listen,
     endTick: endTick,

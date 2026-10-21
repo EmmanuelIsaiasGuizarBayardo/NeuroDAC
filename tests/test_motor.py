@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "capturas_motor.js"
 RECEIVER = ROOT / "tests" / "js" / "recibir.js"
 JARDIN_HARNESS = ROOT / "tools" / "capturas_jardin.js"
+CARRERA_HARNESS = ROOT / "tools" / "capturas_carrera.js"
 FRAMING = ROOT / "tests" / "js" / "encuadre.js"
 
 
@@ -63,6 +64,31 @@ class TestJardin(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("OK", result.stdout)
         for name in ("jardin_compuerta.png", "jardin_calma_alta.png", "jardin_hoja.png"):
+            self.assertTrue((out / name).is_file(), name)
+
+
+@unittest.skipIf(shutil.which("node") is None, "Node no esta instalado")
+class TestCarrera(unittest.TestCase):
+    """Carrera Neural jugada por un bot con los mensajes de la pagina.
+
+    El arnes verifica la compuerta, que mas atencion lleve mas rapido a la
+    meta, que el reloj no cuente pausas, que W y S no alteren la senal dentro
+    de la aplicacion y que ningun pixel salga de la paleta.
+    """
+
+    def test_harness_passes(self):
+        out = ROOT / "results" / "capturas"
+        result = subprocess.run(
+            ["node", str(CARRERA_HARNESS), str(out)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("OK", result.stdout)
+        for name in ("carrera_compuerta.png", "carrera_gano.png", "carrera_hoja.png"):
             self.assertTrue((out / name).is_file(), name)
 
 
