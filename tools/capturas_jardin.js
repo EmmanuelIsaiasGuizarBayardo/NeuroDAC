@@ -295,6 +295,31 @@ fs.mkdirSync(OUT, { recursive: true });
   capture(ctx, 'jardin_tiempo_y_mejor');
 }
 
+/* ------------------------------------------ el aviso no tapa las flores */
+{
+  // La corola mas alta se mide en los sprites, en flor completa y a lo largo
+  // del vaiven: el cuadro final no sirve, porque el fondo usa las mismas rampas.
+  const ctx = fresh(true, 5);
+  const g = ctx.game.state;
+  let t = 0;
+  while (g.banner !== 1 && t < 60 * 120) {
+    run(ctx, 1, 90, true);
+    t++;
+  }
+  let top = 999;
+  for (const sig of [90, 15]) {
+    for (let k = 0; k < 600; k++) {
+      run(ctx, 1, sig, false);
+      g.animDirty = true;
+      ctx.game.render(ctx.frame);
+      top = Math.min(top, ctx.game.flowerTopRow());
+    }
+  }
+  const fondo = ctx.J.BANNER_Y + ctx.J.BANNER_MAX_H;
+  check(fondo <= top, `aviso: llega a la fila ${fondo} y las corolas empiezan en ${top}`);
+  check(ctx.J.BANNER_Y >= 30, 'aviso: invade el marcador');
+}
+
 /* ------------------------------------------ rotacion de escenarios */
 {
   const ctx = fresh(true, 21);

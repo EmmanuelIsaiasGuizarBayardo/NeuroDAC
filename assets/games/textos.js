@@ -24,7 +24,8 @@
       "segundo": "Segundo lugar",
       "tiempo": "Tiempo",
       "mejor": "Mejor",
-      "teclado": "Sin diadema: usa W y S"
+      "teclado": "Sin diadema: usa W y S",
+      "gasolinera": "DUNNE"
     }
   };
 

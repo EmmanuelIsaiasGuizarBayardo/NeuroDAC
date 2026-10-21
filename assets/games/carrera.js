@@ -38,22 +38,38 @@
   /* ----------------------------------------------- mecanica: para afinar */
   /** Velocidades en m/s. */
   const V_MIN = 8;
-  const V_MAX = 55;
-  const GHOST_V = 28;
+  const V_MAX = 70;
   /** Atencion suavizada que da V_MIN y V_MAX; en medio, proporcional. */
   const ATT_LOW = 35;
   const ATT_HIGH = 85;
+  /**
+   * Atencion que hace falta sostener para empatar al rival. Es lo que se
+   * afina, no su velocidad: con la mecanica proporcional, subir V_MAX con el
+   * rival fijo bajaria esta atencion y lo volveria mas facil.
+   */
+  const ATT_RIVAL = 56;
+  const GHOST_V = V_MIN + ((V_MAX - V_MIN) * (ATT_RIVAL - ATT_LOW)) / (ATT_HIGH - ATT_LOW);
   /** Suavizado de la atencion por tick: constante de tiempo de ~1.4 s. */
   const ATT_SMOOTH = 0.012;
   const FINISH_M = 1000;
-  /** Un choque resta velocidad, que se recupera a RECOVER m/s por segundo. */
-  const CRASH = 14;
-  const RECOVER = 6;
-  /** Separacion entre obstaculos, en metros. */
-  const OBST_MIN_M = 22;
-  const OBST_MAX_M = 40;
+  /** Un choque resta velocidad, que se recupera a RECOVER m/s por segundo.
+   *  Proporcional a V_MAX: a mas velocidad, el mismo castigo pesa menos. */
+  const CRASH = 15;
+  const RECOVER = 7;
+  /** Separacion entre filas de obstaculos, en metros. */
+  const OBST_MIN_M = 20;
+  const OBST_MAX_M = 34;
+  /** Probabilidad de que una fila tenga dos obstaculos; nunca tres. */
+  const DOUBLE_ROW = 0.2;
+  /** Tras una fila doble, las filas a menos de esta distancia respetan su
+   *  carril libre: dos filas dobles seguidas con huecos en lados opuestos
+   *  pedirian cruzar dos carriles en un instante. */
+  const DOUBLE_GUARD_M = 32;
+  /** Autos lentos: avanzan, pero menos que el jugador con buena atencion. */
+  const SLOW_MIN_V = 10;
+  const SLOW_MAX_V = 18;
   /** Atencion a partir de la cual se va mas rapido que el rival. */
-  const ATT_GHOST = ATT_LOW + ((GHOST_V - V_MIN) / (V_MAX - V_MIN)) * (ATT_HIGH - ATT_LOW);
+  const ATT_GHOST = ATT_RIVAL;
 
   /* --------------------------------------------------------------- dibujo */
   const PX_PER_M = 3;
@@ -161,22 +177,64 @@
     const playerSprite = car(MAT.player, R.celeste[0]);
     const ghostSprite = car(MAT.ghost, R.asphalt[0]);
 
-    // Obstaculos vistos desde arriba: cono, barril, bache.
-    const obstacleSprites = [
-      sprite(11, 11, function (s) {
-        E.ellipse(s, MAT.cone, 1, 5.5, 5.5, 4.6, 4.6, 0);
-        E.ring(s, MAT.rock, 2, 5.5, 5.5, 2.6, 2.6, 1.1);
-      }, true),
-      sprite(13, 13, function (s) {
-        E.ellipse(s, MAT.barrel, 1, 6.5, 6.5, 5.6, 5.6, 0);
-        E.ring(s, E.material(R.red), 2, 6.5, 6.5, 3.4, 3.4, 1);
-      }, true),
-      sprite(16, 9, function (s) {
-        E.ellipse(s, MAT.hole, 1, 8, 4.5, 7, 3.6, 0);
-        E.ellipse(s, E.material(R.ink), 2, 8.5, 5, 4.5, 2.2, 0);
-      }, false),
+    // Obstaculos vistos desde arriba. El barril rojo se leia como dulce o
+    // como impulso; una valla de obra con franjas no deja duda.
+    const cone = sprite(11, 11, function (s) {
+      E.ellipse(s, MAT.cone, 1, 5.5, 5.5, 4.6, 4.6, 0);
+      E.ring(s, MAT.rock, 2, 5.5, 5.5, 2.6, 2.6, 1.1);
+    }, true);
+    const barrier = sprite(24, 7, function (s) {
+      E.rect(s, 0, 0, 2, 7, INK);
+      E.rect(s, 22, 0, 2, 7, INK);
+      for (let y = 1; y < 6; y++) {
+        for (let x = 2; x < 22; x++) {
+          E.pixel(s, x, y, (((x - y) % 6) + 6) % 6 < 3 ? R.orange[1] : R.petalWhite[2]);
+        }
+      }
+    }, true);
+    const pothole = sprite(16, 9, function (s) {
+      E.ellipse(s, MAT.hole, 1, 8, 4.5, 7, 3.6, 0);
+      E.ellipse(s, E.material(R.ink), 2, 8.5, 5, 4.5, 2.2, 0);
+    }, false);
+    // Autos lentos: colores que no se confunden con el jugador ni con el rival.
+    const slowCars = [
+      car(E.material(R.red, { spec: 0.06, specIndex: WHITE }), R.red[0]),
+      car(E.material(R.petalGold, { spec: 0.06, specIndex: WHITE }), R.petalGold[0]),
+      car(E.material(R.petalViolet, { spec: 0.06, specIndex: WHITE }), R.petalViolet[0]),
+      car(E.material(R.petalWhite, { spec: 0.06, specIndex: WHITE }), R.petalWhite[0]),
     ];
-    const OB_HALF = new Uint8Array([5, 6, 4]);
+    // Tematicos: rocas en el bosque, cascara de platano en el desierto,
+    // bolsa de basura en el pueblo.
+    const rockPile = sprite(15, 11, function (s) {
+      E.ellipse(s, MAT.rock, 1, 5, 6, 4, 3.2, 0);
+      E.ellipse(s, MAT.rock, 2, 10, 5, 4.4, 3.6, 0);
+      E.ellipse(s, MAT.rock, 3, 8, 8, 3.4, 2.4, 0);
+    }, true);
+    const banana = sprite(13, 13, function (s) {
+      const peel = E.material(R.petalGold, { spec: 0.05, specIndex: WHITE });
+      E.capsule(s, peel, 1, 6.5, 5, 1.9, 2, 11, 1);
+      E.capsule(s, peel, 2, 6.5, 5, 1.9, 6.5, 12, 1);
+      E.capsule(s, peel, 3, 6.5, 5, 1.9, 11, 11, 1);
+      E.rect(s, 6, 1, 2, 3, R.wood[1]);
+    }, true);
+    const trashBag = sprite(13, 13, function (s) {
+      E.ellipse(s, E.material(R.asphalt), 1, 6.5, 7.5, 5.2, 4.6, 0);
+      E.rect(s, 5, 1, 3, 2, R.asphalt[0]);
+    }, true);
+    E.pixel(trashBag, 6, 2, R.petalGold[1]); // amarre
+
+    /** Catalogo de obstaculos; `kind` indexa estas tablas. */
+    const OB_SPRITES = [cone, barrier, pothole].concat(slowCars, [rockPile, banana, trashBag]);
+    /** Medio largo para el choque, en pixeles. */
+    const OB_HALF = new Uint8Array([5, 3, 4, 12, 12, 12, 12, 5, 6, 6]);
+    const CAR_FIRST = 3;
+    const CAR_LAST = 6;
+    /** Obstaculo tematico de cada paisaje: bosque, desierto, pueblo. */
+    const THEMED = new Uint8Array([7, 8, 9]);
+
+    function isCar(kind) {
+      return kind >= CAR_FIRST && kind <= CAR_LAST;
+    }
 
     // Paisaje visto desde arriba.
     const pineSprite = sprite(16, 16, function (s) {
@@ -208,9 +266,16 @@
     E.pixel(nopalSprite, 4, 4, R.petalWhite[2]);
     E.pixel(nopalSprite, 11, 2, R.red[1]);
 
-    // Casitas de pueblo vistas desde arriba: tejado de teja y fachada de color.
+    // Casitas de pueblo: tejado de teja o losa blanca con tinaco negro, y
+    // fachada de color hacia el camino.
     const WALLS = [R.petalRose[1], R.petalGold[1], R.petalBlue[1], R.petalViolet[1]];
-    const houseSprites = WALLS.map(function (wall) {
+    function facade(s, wall) {
+      E.rect(s, 0, 13, 20, 5, wall);
+      E.rect(s, 8, 14, 4, 4, R.wood[1]); // puerta
+      E.pixel(s, 3, 15, R.celeste[2]);
+      E.pixel(s, 16, 15, R.celeste[2]);
+    }
+    const tileHouses = WALLS.map(function (wall) {
       return sprite(20, 18, function (s) {
         for (let y = 0; y < 13; y++) {
           for (let x = 0; x < 20; x++) {
@@ -220,24 +285,131 @@
           }
         }
         E.rect(s, 0, 6, 20, 1, R.red[0]); // cumbrera
-        E.rect(s, 0, 13, 20, 5, wall);
-        E.rect(s, 8, 14, 4, 4, R.wood[1]); // puerta
-        E.pixel(s, 3, 15, R.celeste[2]);
-        E.pixel(s, 16, 15, R.celeste[2]);
+        facade(s, wall);
+      }, true);
+    });
+    const tinaco = E.material(R.asphalt);
+    const slabHouses = WALLS.map(function (wall, i) {
+      return sprite(20, 18, function (s) {
+        E.rect(s, 0, 0, 20, 13, R.petalWhite[1]);
+        E.rect(s, 1, 1, 18, 11, R.petalWhite[2]);
+        // Tinaco: el sello de una azotea mexicana.
+        E.ellipse(s, tinaco, 1, i & 1 ? 14 : 5.5, 5.5, 3.2, 3.2, 0);
+        E.rect(s, i & 1 ? 3 : 12, 7, 5, 3, R.petalWhite[0]); // cuarto de azotea
+        facade(s, wall);
       }, true);
     });
 
+    // Hitos del bosque, anclados a la orilla del camino. Cada uno tiene una
+    // version por lado para que su frente quede hacia el camino.
+    function gasStation(roadRight) {
+      const canopyX = roadRight ? 10 : 0;
+      const spr = sprite(32, 30, function (s) {
+        E.rect(s, 0, 0, 32, 30, R.petalWhite[0]); // explanada
+        const storeX = roadRight ? 0 : 22;
+        E.rect(s, storeX, 4, 10, 22, R.petalWhite[1]); // tienda
+        E.rect(s, storeX, 4, 10, 1, R.petalWhite[2]);
+        // Marquesina con los colores DUNNE, del lado del camino.
+        E.rect(s, canopyX, 6, 22, 15, R.celeste[1]);
+        E.rect(s, canopyX, 6, 22, 1, R.orange[1]);
+        E.rect(s, canopyX, 20, 22, 1, R.orange[1]);
+        E.rect(s, canopyX + 4, 23, 2, 3, R.red[1]); // bombas
+        E.rect(s, canopyX + 15, 23, 2, 3, R.red[1]);
+      }, true);
+      E.text(spr, TXT.gasolinera, canopyX + 2, 12, INK);
+      E.text(spr, TXT.gasolinera, canopyX + 1, 11, R.petalWhite[2]);
+      return spr;
+    }
+    const MOSAIC = [
+      R.orange[1], R.petalGold[1], R.petalRose[1], R.celeste[1],
+      R.petalBlue[1], R.red[1], R.petalGold[2], R.wood[2],
+    ];
+    function library(roadRight) {
+      const spr = sprite(26, 40, function (s) {
+        E.rect(s, 0, 0, 26, 40, R.petalWhite[0]); // explanada
+        E.rect(s, 2, 30, 22, 8, R.petalWhite[1]); // ala baja
+        for (let x = 4; x < 22; x += 3) E.pixel(s, x, 34, R.celeste[2]);
+        E.rect(s, 6, 6, 15, 26, R.asphalt[0]); // sombra de la torre
+        E.rect(s, 5, 4, 15, 26, R.petalWhite[1]); // torre sin ventanas
+        E.rect(s, 5, 4, 15, 1, R.petalWhite[2]);
+      }, true);
+      // Fachada de mosaico hacia el camino: un patron generico de colores. No
+      // reproduce los murales de O'Gorman, que son una obra protegida.
+      const fx = roadRight ? 17 : 5;
+      for (let y = 5; y < 30; y++) {
+        for (let x = fx; x < fx + 3; x++) {
+          E.pixel(spr, x, y, MOSAIC[(x * 7 + y * 13 + ((x * y) >> 2)) % MOSAIC.length]);
+        }
+      }
+      return spr;
+    }
+    function office(roadRight) {
+      const spr = sprite(24, 30, function (s) {
+        E.rect(s, 0, 0, 24, 30, R.petalWhite[0]);
+        E.rect(s, 2, 2, 20, 26, R.asphalt[2]); // azotea de concreto
+        E.ellipse(s, tinaco, 1, roadRight ? 7 : 16, 8, 3, 3, 0);
+        E.rect(s, roadRight ? 5 : 13, 17, 6, 4, R.petalWhite[1]); // clima
+      }, true);
+      // Ventanas en la fachada que mira al camino.
+      const fx = roadRight ? 20 : 2;
+      for (let y = 4; y < 27; y += 3) {
+        E.rect(spr, fx, y, 2, 2, R.celeste[2]);
+      }
+      return spr;
+    }
+
+    // Hitos del desierto: piramide escalonada y ruinas entre los magueyes.
+    const pyramid = sprite(22, 22, function (s) {
+      const LEVELS = [
+        [0, 22, R.petalWhite[0]],
+        [3, 16, R.petalWhite[1]],
+        [6, 10, R.petalWhite[2]],
+      ];
+      for (const [o, size, color] of LEVELS) {
+        E.rect(s, o, o, size, size, color);
+        E.rect(s, o, o, size, 1, R.petalWhite[2]); // arista iluminada
+        E.rect(s, o, o + size - 1, size, 1, R.petalWhite[0]);
+      }
+      for (let y = 11; y < 22; y++) E.rect(s, 9, y, 4, 1, (y & 1) === 0 ? R.petalWhite[2] : R.petalWhite[1]);
+      E.rect(s, 9, 9, 4, 4, R.red[0]); // templo
+    }, true);
+    const ruins = sprite(18, 14, function (s) {
+      E.rect(s, 1, 2, 7, 2, R.petalWhite[1]);
+      E.rect(s, 1, 2, 2, 9, R.petalWhite[1]);
+      E.rect(s, 11, 6, 6, 2, R.petalWhite[1]);
+      E.rect(s, 15, 6, 2, 7, R.petalWhite[1]);
+      E.rect(s, 1, 2, 7, 1, R.petalWhite[2]);
+      E.rect(s, 11, 6, 6, 1, R.petalWhite[2]);
+      E.pixel(s, 6, 9, R.petalWhite[0]);
+      E.pixel(s, 9, 11, R.petalWhite[0]);
+      E.pixel(s, 12, 3, R.petalWhite[0]);
+    }, true);
+
+    /**
+     * Catalogo de paisaje; `kind` indexa estas tablas.
+     *  0 pino, 1 roca, 2 maguey, 3 nopal, 4-7 casa de teja, 8-11 casa de losa,
+     *  12-17 hitos del bosque (gasolinera, biblioteca, edificio; izquierda y
+     *  derecha), 18 piramide, 19 ruinas.
+     */
+    const SC_SPRITES = [pineSprite, rockSprite, agaveSprite, nopalSprite]
+      .concat(tileHouses, slabHouses, [
+        gasStation(true), gasStation(false),
+        library(true), library(false),
+        office(true), office(false),
+        pyramid, ruins,
+      ]);
+    /** Hitos anclados a la orilla del camino, en lugar de centrados. */
+    const ANCHORED_FIRST = 12;
+    const ANCHORED_LAST = 17;
+
     // Lista de la hoja de sprites, armada una vez.
-    const SHEET = [playerSprite, ghostSprite].concat(
-      obstacleSprites,
-      [pineSprite, rockSprite, agaveSprite, nopalSprite],
-      houseSprites
-    );
+    const SHEET = [playerSprite, ghostSprite].concat(OB_SPRITES, SC_SPRITES);
 
     /* ------------------------------------------------------ estado */
 
     const ob = {
       m: new Float32Array(OB_CAP),
+      v: new Float32Array(OB_CAP),
       lane: new Uint8Array(OB_CAP),
       kind: new Uint8Array(OB_CAP),
       count: 0,
@@ -248,6 +420,8 @@
       kind: new Uint8Array(SC_CAP),
       count: 0,
     };
+    /** Cuantas veces aparecio cada tipo de paisaje; para las pruebas. */
+    const sceneryTally = new Uint32Array(SC_SPRITES.length);
     const exhaust = E.createParticles(80);
     const seen = new Uint8Array(256);
 
@@ -266,6 +440,11 @@
       crashFlash: 0,
       crashes: 0,
       nextObstacle: 40,
+      // Ultima fila doble y su carril libre, para la regla de equidad.
+      lastDoubleM: -1e9,
+      lastDoubleFree: -1,
+      // Si el ultimo elemento de cada lado fue un hito: nunca dos seguidos.
+      lastLandmark: new Uint8Array(2),
       nextScenery: new Float32Array(2),
       devSignal: 50,
       lastSignal: NaN,
@@ -306,6 +485,8 @@
       g.crashFlash = 0;
       g.crashes = 0;
       g.nextObstacle = 40;
+      g.lastDoubleM = -1e9;
+      g.lastDoubleFree = -1;
       g.playTicks = 0;
       ob.count = 0;
       exhaust.count = 0;
@@ -328,7 +509,7 @@
       W = nw;
       H = nh;
       g.carX = laneCenter(g.lane);
-      fillScenery();
+      setScenery(g.scenery);
     }
 
     /* --------------------------------------------------- paisaje */
@@ -339,22 +520,49 @@
       return 12 + rand() * 14;
     }
 
+    function anchored(kind) {
+      return kind >= ANCHORED_FIRST && kind <= ANCHORED_LAST;
+    }
+
+    /** Que poner en un lado del camino; los hitos aparecen de vez en cuando. */
+    function sceneryKind(side) {
+      const landmarkOk = !g.lastLandmark[side];
+      if (g.scenery === 0) {
+        // Gasolinera, biblioteca o edificio, con su frente hacia el camino.
+        if (landmarkOk && rand() < 0.1) return ANCHORED_FIRST + Math.floor(rand() * 3) * 2 + side;
+        return rand() < 0.8 ? 0 : 1;
+      }
+      if (g.scenery === 1) {
+        if (landmarkOk && rand() < 0.12) return rand() < 0.5 ? 18 : 19;
+        return rand() < 0.55 ? 2 : 3;
+      }
+      // Pueblo: teja o losa con tinaco, mitad y mitad.
+      return (rand() < 0.5 ? 4 : 8) + Math.floor(rand() * WALLS.length);
+    }
+
     /** Agrega paisaje hasta cubrir lo visible por delante. */
     function fillScenery() {
       const limit = g.dist + aheadM() + 10;
+      const shoulder = roadX0();
       for (let side = 0; side < 2; side++) {
         while (g.nextScenery[side] < limit && sc.count < SC_CAP) {
           const i = sc.count++;
+          const kind = sceneryKind(side);
+          const spr = SC_SPRITES[kind];
           sc.m[i] = g.nextScenery[side];
-          const shoulder = roadX0();
-          const cx = side === 0 ? shoulder >> 1 : W - (shoulder >> 1);
-          sc.x[i] = cx + Math.round((rand() - 0.5) * Math.max(0, shoulder - 18));
-          let kind;
-          if (g.scenery === 0) kind = rand() < 0.8 ? 0 : 1; // pino o roca
-          else if (g.scenery === 1) kind = rand() < 0.55 ? 2 : 3; // maguey o nopal
-          else kind = 4 + Math.floor(rand() * WALLS.length); // casita
           sc.kind[i] = kind;
-          g.nextScenery[side] += sceneryStep();
+          sceneryTally[kind]++;
+          if (anchored(kind)) {
+            // Pegado a la orilla, con el resto hacia afuera: en lienzos
+            // angostos se ve cortado, como lo veria una camara.
+            sc.x[i] = side === 0 ? shoulder - (spr.w >> 1) - 1 : shoulder + ROAD_W + (spr.w >> 1) + 1;
+          } else {
+            const cx = side === 0 ? shoulder >> 1 : W - (shoulder >> 1);
+            sc.x[i] = cx + Math.round((rand() - 0.5) * Math.max(0, shoulder - 18));
+          }
+          const landmark = anchored(kind) || kind >= 18;
+          g.lastLandmark[side] = landmark ? 1 : 0;
+          g.nextScenery[side] += landmark ? spr.h / PX_PER_M + 4 : sceneryStep();
         }
       }
     }
@@ -440,35 +648,31 @@
         g.ghostFinished = g.ghost >= FINISH_M;
       }
 
-      // Obstaculos por delante, uno por fila: nunca se bloquean los tres
-      // carriles a la vez.
       while (g.nextObstacle < g.dist + aheadM() && g.nextObstacle < FINISH_M - 20) {
-        if (ob.count < OB_CAP) {
-          const i = ob.count++;
-          ob.m[i] = g.nextObstacle;
-          ob.lane[i] = Math.floor(rand() * LANES);
-          ob.kind[i] = Math.floor(rand() * obstacleSprites.length);
-        }
+        spawnRow(g.nextObstacle);
         g.nextObstacle += OBST_MIN_M + rand() * (OBST_MAX_M - OBST_MIN_M);
       }
 
+      // Los autos lentos avanzan; el resto esta quieto.
+      for (let k = 0; k < ob.count; k++) ob.m[k] += ob.v[k] / 60;
+
       // Choques: mismo carril y a menos de medio coche.
       const lane = nearestLane();
+      const behind = -(H - playerY() + 20);
+      const ahead = (aheadM() + 60) * PX_PER_M;
       let i = 0;
       while (i < ob.count) {
         const dy = (ob.m[i] - g.dist) * PX_PER_M;
         const reach = (CAR_H >> 1) + OB_HALF[ob.kind[i]];
         const hit = ob.lane[i] === lane && dy < reach && dy > -reach;
-        if (hit || dy < -(H - playerY() + 20)) {
+        // Un auto lento que se aleja por delante tambien sale de la cuenta.
+        if (hit || dy < behind || dy > ahead) {
           if (hit) {
             g.penalty += CRASH;
             g.crashFlash = 30;
             g.crashes++;
           }
-          const last = --ob.count;
-          ob.m[i] = ob.m[last];
-          ob.lane[i] = ob.lane[last];
-          ob.kind[i] = ob.kind[last];
+          removeObstacle(i);
           continue;
         }
         i++;
@@ -483,6 +687,69 @@
         g.lastSeconds = Math.floor(g.playTicks / 60);
         if (g.bestSeconds < 0 || g.lastSeconds < g.bestSeconds) g.bestSeconds = g.lastSeconds;
       }
+    }
+
+    function addObstacle(m, lane, kind, v) {
+      if (ob.count >= OB_CAP) return;
+      const i = ob.count++;
+      ob.m[i] = m;
+      ob.lane[i] = lane;
+      ob.kind[i] = kind;
+      ob.v[i] = v;
+    }
+
+    function removeObstacle(i) {
+      const last = --ob.count;
+      ob.m[i] = ob.m[last];
+      ob.v[i] = ob.v[last];
+      ob.lane[i] = ob.lane[last];
+      ob.kind[i] = ob.kind[last];
+    }
+
+    /** Hay un auto lento en ese carril que alcanzaria o estorbaria la fila m. */
+    function carNear(lane, m) {
+      for (let i = 0; i < ob.count; i++) {
+        if (!isCar(ob.kind[i])) continue;
+        if (lane >= 0 && ob.lane[i] !== lane) continue;
+        const gap = m - ob.m[i];
+        if (gap > -20 && gap < 50) return true;
+      }
+      return false;
+    }
+
+    /** Un carril usable para la fila m, distinto de `except`, o -1. */
+    function pickLane(m, except) {
+      const guarded = m - g.lastDoubleM < DOUBLE_GUARD_M ? g.lastDoubleFree : -1;
+      const start = Math.floor(rand() * LANES);
+      for (let k = 0; k < LANES; k++) {
+        const lane = (start + k) % LANES;
+        if (lane === except || lane === guarded || carNear(lane, m)) continue;
+        return lane;
+      }
+      return -1;
+    }
+
+    /**
+     * Una fila de obstaculos. Nunca bloquea los tres carriles: una fila doble
+     * deja uno libre, no admite autos lentos cerca, y las filas siguientes
+     * respetan ese carril libre durante DOUBLE_GUARD_M metros.
+     */
+    function spawnRow(m) {
+      const r = rand();
+      let kind;
+      if (r < 0.18) kind = CAR_FIRST + Math.floor(rand() * (CAR_LAST - CAR_FIRST + 1));
+      else if (r < 0.38) kind = THEMED[g.scenery];
+      else kind = Math.floor(rand() * 3); // cono, valla o bache
+      const lane = pickLane(m, -1);
+      if (lane < 0) return;
+      const car = isCar(kind);
+      addObstacle(m, lane, kind, car ? SLOW_MIN_V + rand() * (SLOW_MAX_V - SLOW_MIN_V) : 0);
+      if (car || rand() >= DOUBLE_ROW || carNear(-1, m)) return;
+      const second = pickLane(m, lane);
+      if (second < 0) return;
+      addObstacle(m, second, rand() < 0.5 ? THEMED[g.scenery] : Math.floor(rand() * 3), 0);
+      g.lastDoubleM = m;
+      g.lastDoubleFree = LANES * (LANES - 1) / 2 - lane - second;
     }
 
     function nearestLane() {
@@ -585,13 +852,7 @@
 
     function drawScenery(f) {
       for (let i = 0; i < sc.count; i++) {
-        const k = sc.kind[i];
-        const spr =
-          k === 0 ? pineSprite
-            : k === 1 ? rockSprite
-              : k === 2 ? agaveSprite
-                : k === 3 ? nopalSprite
-                  : houseSprites[k - 4];
+        const spr = SC_SPRITES[sc.kind[i]];
         E.blit(f, spr, sc.x[i] - (spr.w >> 1), screenY(sc.m[i]) - (spr.h >> 1));
       }
     }
@@ -611,7 +872,7 @@
 
     function drawObstacles(f) {
       for (let i = 0; i < ob.count; i++) {
-        const spr = obstacleSprites[ob.kind[i]];
+        const spr = OB_SPRITES[ob.kind[i]];
         E.blit(f, spr, laneCenter(ob.lane[i]) - (spr.w >> 1), screenY(ob.m[i]) - (spr.h >> 1));
       }
     }
@@ -766,6 +1027,16 @@
       obstacleCount: function () {
         return ob.count;
       },
+      /** Vista de solo lectura del paisaje visible. */
+      sceneryView: function () {
+        return sc;
+      },
+      /** Tipos de paisaje que han aparecido; para las pruebas. */
+      sceneryHistory: function () {
+        const out = [];
+        for (let k = 0; k < sceneryTally.length; k++) if (sceneryTally[k] > 0) out.push(k);
+        return out;
+      },
       /** Vista de solo lectura de los obstaculos, para el bot de pruebas. */
       obstacleView: function () {
         return ob;
@@ -796,6 +1067,7 @@
     V_MIN: V_MIN,
     V_MAX: V_MAX,
     GHOST_V: GHOST_V,
+    ATT_RIVAL: ATT_RIVAL,
     FINISH_M: FINISH_M,
     ATT_GHOST: ATT_GHOST,
     SCENERY_COUNT: SCENERY_COUNT,

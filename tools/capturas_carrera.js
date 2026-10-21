@@ -46,14 +46,17 @@ function bridge(E, signalValue, ready, theme) {
   E.receive({ source: 'neurodac', signalValue, ready, theme: theme || 'dark' }, 0);
 }
 
-/** Bot: si hay un obstaculo cerca en su carril, cambia a uno libre. */
+/** Bot: si hay un obstaculo cerca en su carril, cambia a uno libre. Mira
+ *  por delante en proporcion a su velocidad, como una persona atenta: con
+ *  una ventana fija, a 70 m/s ya no alcanza a cruzar el carril. */
 function drive(ctx) {
   const g = ctx.game.state;
   const ob = ctx.game.obstacleView();
   const threat = [false, false, false];
+  const window = Math.max(26, ctx.game.speed() * 0.65);
   for (let i = 0; i < ob.count; i++) {
     const ahead = ob.m[i] - g.dist;
-    if (ahead > -3 && ahead < 26) threat[ob.lane[i]] = true;
+    if (ahead > -3 && ahead < window) threat[ob.lane[i]] = true;
   }
   const lane = g.lane;
   if (!threat[lane]) return;
@@ -152,8 +155,11 @@ fs.mkdirSync(OUT, { recursive: true });
   const ganada = race(ctx, 88);
   check(ganada.result === 1, `meta: con atencion alta no gano (resultado ${ganada.result})`);
   check(ganada.seconds === Math.floor(ganada.ticks / 60), 'reloj: el tiempo guardado no es el jugado');
-  check(ganada.seconds >= 18 && ganada.seconds < 36,
-    `reloj: ${ganada.seconds} s con atencion alta, fuera de lo esperado`);
+  // Entre lo que se tarda a velocidad maxima y lo que tarda el rival.
+  const minimo = Math.floor(ctx.C.FINISH_M / ctx.C.V_MAX);
+  const rival = ctx.C.FINISH_M / ctx.C.GHOST_V;
+  check(ganada.seconds >= minimo && ganada.seconds < rival,
+    `reloj: ${ganada.seconds} s con atencion alta, fuera de [${minimo}, ${rival.toFixed(1)})`);
   check(ctx.game.state.bestSeconds === ganada.seconds, 'reloj: el primer tiempo no quedo como mejor');
   run(ctx, 20, 88, true);
   capture(ctx, 'carrera_gano');
@@ -163,7 +169,7 @@ fs.mkdirSync(OUT, { recursive: true });
   check(ctx.game.state.state === 0 && ctx.game.state.dist < 50, 'meta: no arranco una carrera nueva');
   const perdida = race(ctx, 50);
   check(perdida.result === 2, `meta: con atencion neutral no perdio (resultado ${perdida.result})`);
-  check(perdida.seconds > 36, `meta: perdio en ${perdida.seconds} s, antes que el rival`);
+  check(perdida.seconds > ctx.C.FINISH_M / ctx.C.GHOST_V, `meta: perdio en ${perdida.seconds} s, antes que el rival`);
   check(ctx.game.state.bestSeconds === ganada.seconds, 'reloj: el mejor no se conservo');
   run(ctx, 20, 50, true);
   capture(ctx, 'carrera_segundo');
@@ -194,10 +200,14 @@ fs.mkdirSync(OUT, { recursive: true });
   }
   check(vistoChoque, 'choque: sin bot no choco en 40 s');
 
-  // Lineas de velocidad: mas pixeles con mas velocidad.
+  // Lineas de velocidad: mas pixeles con mas velocidad. Se miden aisladas,
+  // sin obstaculos ni castigo: lo que se verifica es el canal, no el manejo,
+  // y varios obstaculos nuevos usan el mismo gris.
   function lineas(sig) {
     const c = fresh(true, 19);
     run(c, 900, sig, true, { bot: true });
+    c.game.obstacleView().count = 0;
+    c.game.state.penalty = 0;
     c.game.render(c.frame);
     const pal = c.game.palette;
     const gris = pal.ramps.petalWhite[0];
@@ -224,6 +234,82 @@ fs.mkdirSync(OUT, { recursive: true });
     return suma / 120;
   }
   check(escape(90) > escape(35) * 1.5, 'escape: no crece con la atencion');
+}
+
+/* ------------------------------------------ obstaculos y equidad */
+{
+  // Una carrera larga por paisaje, registrando cada obstaculo al aparecer.
+  const vistos = [new Set(), new Set(), new Set()];
+  let bloqueos = 0;
+  let autosQueAvanzan = 0;
+  for (let esc = 0; esc < 3; esc++) {
+    const ctx = fresh(true, 50 + esc);
+    ctx.game.setScenery(esc);
+    const g = ctx.game.state;
+    const ob = ctx.game.obstacleView();
+    const conocidos = new Map();
+    run(ctx, 60 * 60, 90, true, {
+      bot: true,
+      until: () => {
+        for (let i = 0; i < ob.count; i++) {
+          vistos[esc].add(ob.kind[i]);
+          if (ob.kind[i] >= 3 && ob.kind[i] <= 6) {
+            const clave = ob.lane[i] + ':' + ob.kind[i] + ':' + Math.round(ob.v[i] * 100);
+            // Contra su primera posicion: entre ticks avanza menos de medio metro.
+            const primera = conocidos.get(clave);
+            if (primera === undefined) conocidos.set(clave, ob.m[i]);
+            else if (ob.m[i] > primera + 5) autosQueAvanzan++;
+          }
+        }
+        // Ninguna franja de 10 m con los tres carriles ocupados por obstaculos
+        // fijos: no habria por donde pasar.
+        for (let i = 0; i < ob.count; i++) {
+          let carriles = 0;
+          for (let l = 0; l < 3; l++) {
+            for (let j = 0; j < ob.count; j++) {
+              if (ob.lane[j] === l && Math.abs(ob.m[j] - ob.m[i]) < 10 && ob.v[j] === 0 && ob.v[i] === 0) {
+                carriles++;
+                break;
+              }
+            }
+          }
+          if (carriles === 3) bloqueos++;
+        }
+        return g.state !== 0;
+      },
+    });
+  }
+  check(bloqueos === 0, `equidad: ${bloqueos} cuadros con los tres carriles bloqueados`);
+  check(autosQueAvanzan > 20, `autos lentos: no avanzan (${autosQueAvanzan} observaciones)`);
+  const tema = [7, 8, 9];
+  for (let esc = 0; esc < 3; esc++) {
+    check(vistos[esc].has(tema[esc]), `obstaculos: el tematico del paisaje ${esc} no aparecio`);
+    check(!vistos[esc].has(tema[(esc + 1) % 3]), `obstaculos: un tematico ajeno aparecio en el paisaje ${esc}`);
+    check([3, 4, 5, 6].some((k) => vistos[esc].has(k)), `obstaculos: sin autos lentos en el paisaje ${esc}`);
+  }
+}
+
+/* ------------------------------------------ paisajes con variedad */
+{
+  // Recorre cada paisaje y registra que elementos aparecen.
+  const vistos = [new Set(), new Set(), new Set()];
+  for (let esc = 0; esc < 3; esc++) {
+    for (const seed of [61, 62, 63]) {
+      const ctx = fresh(true, seed + esc * 10, 176, 288);
+      ctx.game.setScenery(esc);
+      run(ctx, 60 * 60, 90, true, { bot: true, until: () => ctx.game.state.state !== 0 });
+      // El catalogo de paisaje no es observable desde fuera; se infiere del
+      // tipo registrado en cada elemento a traves de la hoja del juego.
+      const sc = ctx.game.sceneryView();
+      for (let i = 0; i < sc.count; i++) vistos[esc].add(sc.kind[i]);
+      for (const k of ctx.game.sceneryHistory()) vistos[esc].add(k);
+    }
+  }
+  const hitosBosque = [12, 13, 14, 15, 16, 17].filter((k) => vistos[0].has(k));
+  check(hitosBosque.length >= 2, `paisaje: casi no hay hitos en el bosque (${hitosBosque})`);
+  check(vistos[1].has(18) || vistos[1].has(19), 'paisaje: sin piramides ni ruinas en el desierto');
+  check([4, 5, 6, 7].some((k) => vistos[2].has(k)) && [8, 9, 10, 11].some((k) => vistos[2].has(k)),
+    'paisaje: el pueblo no alterna teja y losa');
 }
 
 /* ------------------------------------------ meta a la vista */

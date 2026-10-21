@@ -50,6 +50,12 @@
   /** Umbrales que la barra de calma marca para el visitante. */
   const THRESHOLDS = [LOWER, UPPER];
 
+  /** Fila del aviso final: debajo del marcador y arriba de las corolas. Mas
+   *  abajo tapaba las flores; el arnes mide la corola mas alta en todas las
+   *  fases del vaiven y exige que el aviso termine antes. */
+  const BANNER_Y = 33;
+  const BANNER_MAX_H = 6 + 3 * 9;
+
   const BANNER_NONE = 0;
   const BANNER_DONE = 1;
   const BANNER_WILT = 2;
@@ -641,7 +647,7 @@
       const bw = Math.max(E.textWidth(msg), done ? timeW : 0, lines === 3 ? bestW : 0) + 14;
       const bh = 6 + lines * 9;
       const bx = (W - bw) >> 1;
-      const by = 48;
+      const by = BANNER_Y;
       // Dos pasadas: con tres lineas el aviso cae sobre las flores y un solo
       // oscurecimiento no separaba el texto de los petalos.
       E.applyLUT(f, DARKEN, bx, by, bw, bh);
@@ -812,6 +818,28 @@
       pollenCount: function () {
         return pollen.count;
       },
+      /** Fila mas alta de las flores plantadas, medida en sus sprites: el
+       *  cuadro final no sirve, porque el fondo usa las mismas rampas. */
+      flowerTopRow: function () {
+        let top = 999;
+        for (let i = 0; i <= g.current && i < FLOWERS; i++) {
+          const spr = sprites[i];
+          for (let y = 0; y < SPR_H && BASE_Y - SPR_BASE_Y + y < top; y++) {
+            let hit = false;
+            for (let x = 0; x < SPR_W; x++) {
+              if (spr.px[y * SPR_W + x] !== E.TRANSPARENT) {
+                hit = true;
+                break;
+              }
+            }
+            if (hit) {
+              top = BASE_Y - SPR_BASE_Y + y;
+              break;
+            }
+          }
+        }
+        return top;
+      },
       /** Matas visibles y florecitas abiertas con la vida actual. */
       groundCounts: function () {
         let tufts = 0;
@@ -842,6 +870,8 @@
   const api = {
     createGame: createGame,
     KEYS_USED: KEYS_USED,
+    BANNER_Y: BANNER_Y,
+    BANNER_MAX_H: BANNER_MAX_H,
     MIN_W: MIN_W,
     MAX_W: MAX_W,
     H: H,

@@ -189,6 +189,27 @@ atención ni la meditación. El mejor tiempo es de la sesión: se pierde al
 recargar la página. Los arneses verifican que el reloj no corra con la
 compuerta cerrada ni durante una pausa, y que el tiempo guardado sea el jugado.
 
+## Carrera: dificultad y equidad
+
+La atención fija la velocidad de forma proporcional. Lo que se afina del rival
+no es su velocidad sino **la atención que pide empatarlo** (`ATT_RIVAL`, hoy
+56): su velocidad se deriva de ella. Con la mecánica proporcional, subir la
+velocidad máxima con el rival fijo bajaría esa atención y lo volvería más
+fácil sin que nadie lo notara.
+
+Ninguna fila de obstáculos bloquea los tres carriles. Una fila doble deja uno
+libre, no admite autos lentos cerca, y las filas de los siguientes
+`DOUBLE_GUARD_M` metros respetan ese carril: dos filas dobles seguidas con
+huecos en lados opuestos pedirían cruzar dos carriles en un instante. El arnés
+lo verifica cuadro por cuadro en carreras completas de los tres paisajes, y
+falla si se viola.
+
+Con un bot que mira por delante en proporción a su velocidad, los valores
+actuales dan de 3.5 a 5.5 choques por carrera; con atención alta se gana
+siempre, y con atención apenas arriba de la raya del rival se gana la mitad de
+las veces, que es donde esquivar debe decidir. Las constantes para afinar
+están juntas al inicio de `assets/games/carrera.js`.
+
 ## Reglas de render
 
 Las garantiza el motor si se usa como está:
