@@ -126,3 +126,11 @@
     font-weight: 600;
     pointer-events: none;
 }
+
+/* --- Ancho estable para el encuadre ---
+   El juego llena el ancho de su columna. Si al crecer apareciera la barra de
+   desplazamiento, la columna se angostaria, el juego se encogeria y la barra
+   desapareceria: un vaiven. Reservar su espacio lo evita. */
+html {
+    scrollbar-gutter: stable;
+}

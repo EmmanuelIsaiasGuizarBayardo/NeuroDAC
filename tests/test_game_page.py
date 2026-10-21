@@ -338,9 +338,18 @@ class TestLayout(unittest.TestCase):
             if kw.arg == "logical_size"
         )
         game = (ASSETS / "jardin.js").read_text(encoding="utf-8")
-        w = int(re.search(r"const W = (\d+);", game).group(1))
+        min_w = int(re.search(r"const MIN_W = (\d+);", game).group(1))
+        max_w = int(re.search(r"const MAX_W = (\d+);", game).group(1))
         h = int(re.search(r"const H = (\d+);", game).group(1))
-        self.assertEqual(tuple(declared), (w, h))
+        self.assertEqual(tuple(declared), (min_w, h))
+        width_max = next(
+            ast.literal_eval(kw.value)
+            for node in ast.walk(ast.parse(page))
+            if isinstance(node, ast.Call)
+            for kw in node.keywords
+            if kw.arg == "logical_width_max"
+        )
+        self.assertEqual(width_max, max_w)
 
     def test_container_exposes_the_logical_size(self):
         from neurodac.game_page import build
@@ -362,6 +371,17 @@ class TestLayout(unittest.TestCase):
         attrs = con.to_plotly_json()["props"]
         self.assertEqual((attrs["data-lw"], attrs["data-lh"]), ("240", "180"))
         self.assertEqual(attrs["data-maxh"], "66vh")
+        self.assertNotIn("data-lwmax", attrs)
+        ancho = container(
+            GameSpec(
+                prefix="enc3",
+                path="/enc3",
+                logical_size=(240, 180),
+                logical_width_max=360,
+                **base,
+            )
+        )
+        self.assertEqual(ancho.to_plotly_json()["props"]["data-lwmax"], "360")
         sin = container(GameSpec(prefix="enc2", path="/enc2", **base))
         self.assertNotIn("data-lw", sin.to_plotly_json()["props"])
 

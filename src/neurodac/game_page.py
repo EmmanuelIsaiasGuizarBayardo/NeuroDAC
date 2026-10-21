@@ -100,6 +100,9 @@ class GameSpec:
         Resolucion logica de un juego de pixel art. Con ella, la pagina ajusta
         el contenedor al mayor multiplo entero que cabe (assets/encuadre.js),
         y el juego llena su iframe sin franjas. Debe coincidir con la del juego.
+    logical_width_max : int, optional
+        Si se da, `logical_size` es el ancho minimo y el juego llena el ancho
+        de su recuadro: dibuja tantas columnas como quepan hasta este maximo.
     """
 
     prefix: str
@@ -112,6 +115,7 @@ class GameSpec:
     game_width: int = 7
     canvas_height: str = "66vh"
     logical_size: tuple[int, int] | None = None
+    logical_width_max: int | None = None
 
 
 def build(spec: GameSpec) -> callable:
@@ -354,7 +358,10 @@ def _frame_data(spec: GameSpec) -> dict:
     if spec.logical_size is None:
         return {}
     lw, lh = spec.logical_size
-    return {"data-lw": str(lw), "data-lh": str(lh), "data-maxh": spec.canvas_height}
+    data = {"data-lw": str(lw), "data-lh": str(lh), "data-maxh": spec.canvas_height}
+    if spec.logical_width_max is not None:
+        data["data-lwmax"] = str(spec.logical_width_max)
+    return data
 
 
 def _side_column(spec: GameSpec, ids: PanelIds, graph_id: str) -> list:

@@ -32,9 +32,10 @@ SPEC = GameSpec(
     explanation=_explanation("jardin"),
     game_width=7,
     canvas_height="66vh",
-    # La de assets/games/jardin.js: la pagina encuadra el lienzo en un
-    # multiplo entero exacto y el juego lo llena sin franjas.
+    # Las de assets/games/jardin.js: el juego llena el ancho de su recuadro
+    # con escalado entero, dibujando entre 240 y 360 columnas logicas.
     logical_size=(240, 180),
+    logical_width_max=360,
 )
 
 layout = build(SPEC)

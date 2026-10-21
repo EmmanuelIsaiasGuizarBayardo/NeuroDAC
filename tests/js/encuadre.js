@@ -8,7 +8,7 @@
 'use strict';
 
 const path = require('path');
-const { encuadre } = require(path.resolve(__dirname, '..', '..', 'assets', 'encuadre.js'));
+const { encuadre, encuadreAncho } = require(path.resolve(__dirname, '..', '..', 'assets', 'encuadre.js'));
 const E = require(path.resolve(__dirname, '..', '..', 'assets', 'games', 'engine.js'));
 
 const fallas = [];
@@ -42,6 +42,47 @@ for (const [lw, lh] of RESOLUCIONES) {
           if (restoW > 1 || restoH > 1) {
             fallas.push(`${etiqueta} (corto ${corto}): queda franja de ${restoW}x${restoH}`);
           }
+        }
+      }
+    }
+  }
+}
+
+/* Modo que llena el ancho: Jardin, de 240 a 360 columnas con alto 180. */
+const MIN_W = 240;
+const MAX_W = 360;
+const LH = 180;
+for (const dpr of DENSIDADES) {
+  for (let availW = 200; availW <= 1900; availW += 23) {
+    for (let availH = 120; availH <= 1200; availH += 53) {
+      casos++;
+      const r = encuadreAncho(availW, availH, dpr, MIN_W, MAX_W, LH);
+      const s = r.scale;
+      const et = `ancho dpr ${dpr} espacio ${availW}x${availH}`;
+      // Con menos de MIN_W pixeles de dispositivo no hay escalado entero que
+      // quepa: ese dominio es imposible y no se exige.
+      const posible = availW * dpr >= MIN_W;
+      if (posible && r.width > availW + 1e-9) fallas.push(`${et}: se sale a lo ancho`);
+      if (s > 1 && LH * s > availH * dpr) fallas.push(`${et}: no cabe en la pantalla con factor ${s}`);
+      // Llena el ancho salvo cuando topa con el maximo de columnas.
+      if (r.lw < MAX_W && availW * dpr - r.lw * s >= s) {
+        fallas.push(`${et}: sobran ${(availW * dpr - r.lw * s).toFixed(0)} px de dispositivo a lo ancho`);
+      }
+      // El factor solo baja si de verdad no cabe a lo alto.
+      const porAncho = Math.max(1, Math.floor((availW * dpr) / MIN_W));
+      if (s < porAncho && LH * (s + 1) <= availH * dpr) fallas.push(`${et}: bajo el factor sin necesidad`);
+      for (const corto of [0, 1]) {
+        const cw = Math.floor(r.width * dpr) - corto;
+        const ch = Math.floor(r.height * dpr) - corto;
+        const m = E.fitWidth(cw, ch, MIN_W, MAX_W, LH);
+        // Mismo factor siempre. Las columnas pueden diferir en una: a factor
+        // bajo, un pixel corto es literalmente una columna menos, y el juego
+        // la llena exacta. Lo que no se admite es una franja visible.
+        if (m.scale !== s || Math.abs(m.w - r.lw) > 1) {
+          fallas.push(`${et} (corto ${corto}): el motor elige ${m.w}x${m.scale}, no ${r.lw}x${s}`);
+        }
+        if (posible && (Math.abs(cw - m.w * m.scale) > 2 || Math.abs(ch - LH * m.scale) > 2)) {
+          fallas.push(`${et} (corto ${corto}): franja de ${cw - m.w * m.scale}x${ch - LH * m.scale}`);
         }
       }
     }

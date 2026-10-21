@@ -26,7 +26,11 @@
    *  con GameSpec.keys en pages/jardin.py. */
   const KEYS_USED = [];
 
-  const W = 240;
+  /** Ancho logico: el juego llena el ancho de su recuadro con escalado
+   *  entero, asi que dibuja tantas columnas como quepan entre estos limites.
+   *  La altura es fija. Debe coincidir con GameSpec en pages/jardin.py. */
+  const MIN_W = 240;
+  const MAX_W = 360;
   const H = 180;
   const HORIZON = 116;
   const BED_TOP = 146;
@@ -53,9 +57,14 @@
   const WILT_TICKS = 150;
 
   /** Matas de pasto en la cama de tierra; reaccionan a la vida. */
-  const TUFTS = 34;
-  /** Matas que se reparten cerca de cada flor; el resto, por toda la cama. */
-  const TUFTS_NEAR = 25;
+  const TUFTS = 64;
+  /** Matas que se reparten cerca de cada flor; el resto, por toda la cama,
+   *  incluida la franja del frente. */
+  const TUFTS_NEAR = 30;
+  /** Matorrales bajos entre las flores, al fondo de la cama. */
+  const BUSHES = 12;
+  const BUSH_W = 18;
+  const BUSH_H = 11;
 
   const SPR_W = 44;
   const SPR_H = 100;
@@ -84,6 +93,7 @@
   function createGame(options) {
     const o = options || {};
     const rand = mulberry32(o.seed === undefined ? Date.now() >>> 0 : o.seed);
+    let W = clamp(o.width === undefined ? MIN_W : o.width | 0, MIN_W, MAX_W);
 
     const pal = E.createPalette(PAL.SPEC);
     const R = pal.ramps;
@@ -113,19 +123,72 @@
     const DARKEN = E.rampShiftLUT(pal, -2);
 
     const scenes = ESC.createAll(E, pal);
-    const backdrop = E.createFrame(W, H);
+    let backdrop = E.createFrame(W, H);
     let backdropScene = -1;
-    const ground = E.createFrame(W, H);
+    let ground = E.createFrame(W, H);
     const sprites = [];
     for (let i = 0; i < FLOWERS; i++) sprites.push(E.createFrame(SPR_W, SPR_H));
     const scratch = new Uint8Array(SPR_W * SPR_H);
     const sheetSprite = E.createFrame(SPR_W, SPR_H);
     const springs = E.createSprings(FLOWERS);
+
+    // Matorrales prepintados: 3 etapas x 2 variantes. En cada cuadro solo se
+    // copian; rasterizarlos por cuadro alocaria por cada primitiva.
+    const BUSH_STAGES = [
+      // Un solo material: el apagado se deriva bajando un tono y el seco son
+      // ramitas, no relleno.
+      E.material(R.foliage, { baseTone: 1 }),
+    ];
+    const BUSH_SHAPES = [
+      [5, 7, 4.5, 3.2, 10, 5, 5.5, 4, 14, 7, 3.8, 2.8],
+      [6, 6, 5, 3.6, 12, 7, 4.5, 3, 9, 8, 6, 2.6],
+    ];
+    const bushSprites = [];
+    const bushScratch = new Uint8Array(BUSH_W * BUSH_H);
+    const DIM = E.rampShiftLUT(pal, -1);
+    for (let st = 0; st < 3; st++) {
+      for (let v = 0; v < 2; v++) {
+        const spr = E.createFrame(BUSH_W, BUSH_H);
+        const sh = BUSH_SHAPES[v];
+        if (st < 2) {
+          for (let k = 0; k < 3; k++) {
+            E.ellipse(spr, BUSH_STAGES[0], 1 + k, sh[k * 4], sh[k * 4 + 1], sh[k * 4 + 2], sh[k * 4 + 3], 0);
+          }
+          // Apagado: el mismo matorral un tono abajo en su propia rampa. Otro
+          // material seguia llegando al tono mas claro en el lado iluminado.
+          if (st === 1) E.applyLUT(spr, DIM, 0, 0, BUSH_W, BUSH_H);
+        } else {
+          // Seco: un esqueleto de ramitas en abanico. Relleno parecia piedra,
+          // y ralo por tramado, un tablero: lo regular no se lee organico.
+          const bx = 9 - v;
+          const by = BUSH_H - 1;
+          const TIPS = [2, 4, 5, 2, 9 - v, 1, 13, 2, 16, 5];
+          for (let k = 0; k < TIPS.length; k += 2) {
+            E.line(spr, bx, by, TIPS[k], TIPS[k + 1], R.wood[2]);
+            E.pixel(spr, TIPS[k], TIPS[k + 1], R.petalGold[0]);
+          }
+          E.pixel(spr, 4 + v, 4, R.grass[0]);
+          E.pixel(spr, 13 - v, 3, R.grass[0]);
+        }
+        E.selOut(spr, pal, INK, bushScratch);
+        if (st === 0) {
+          // Con vida alta, dos florecitas en la copa.
+          E.pixel(spr, 7 + v, 3, R.petalWhite[2]);
+          E.pixel(spr, 12 - v, 4, R.petalRose[2]);
+        }
+        bushSprites.push(spr);
+      }
+    }
     const pollen = E.createParticles(160);
     const seen = new Uint8Array(256);
 
     const XS = new Float32Array(FLOWERS);
-    for (let i = 0; i < FLOWERS; i++) XS[i] = 26 + i * 47;
+    /** Flores centradas con su separacion de siempre; a 240 quedan donde
+     *  estaban. Lo que sobra a los lados es paisaje. */
+    function placeFlowers() {
+      for (let i = 0; i < FLOWERS; i++) XS[i] = Math.round(W / 2) + (i - 2) * 47;
+    }
+    placeFlowers();
 
     // Suelo vivo. Cada mata tiene sus propios umbrales: asi, cuando la vida
     // cambia, el suelo cambia de mata en mata y no todo a la vez.
@@ -135,6 +198,11 @@
     const tuftBloom = new Float32Array(TUFTS); // vida minima para florecer
     const tuftJitter = new Float32Array(TUFTS); // corrimiento de su color
     const tuftColor = new Uint8Array(TUFTS);
+    const bushX = new Int16Array(BUSHES);
+    const bushY = new Uint8Array(BUSHES);
+    const bushShow = new Float32Array(BUSHES);
+    const bushJitter = new Float32Array(BUSHES);
+    const bushVariant = new Uint8Array(BUSHES);
     const WILD = new Uint8Array([
       R.petalGold[2], R.petalWhite[2], R.petalRose[2], R.petalBlue[2], R.petalViolet[2],
     ]);
@@ -201,6 +269,18 @@
     }
 
     function placeTufts() {
+      // Matorrales repartidos a lo ancho, corridos si caerian sobre un tallo.
+      for (let k = 0; k < BUSHES; k++) {
+        let x = 10 + (k * (W - 20)) / (BUSHES - 1) + (rand() - 0.5) * 8;
+        for (let i = 0; i < FLOWERS; i++) {
+          if (Math.abs(x - XS[i]) < 10) x += x < XS[i] ? -10 : 10;
+        }
+        bushX[k] = Math.round(clamp(x, 4, W - 5));
+        bushY[k] = BED_TOP + 9 + Math.floor(rand() * 3);
+        bushShow[k] = 0.02 + rand() * 0.2;
+        bushJitter[k] = (rand() - 0.5) * 0.16;
+        bushVariant[k] = k & 1;
+      }
       for (let k = 0; k < TUFTS; k++) {
         let x;
         if (k < TUFTS_NEAR) {
@@ -211,7 +291,10 @@
           x = 4 + rand() * (W - 8);
         }
         tuftX[k] = Math.round(clamp(x, 3, W - 4));
-        tuftY[k] = BASE_Y - 1 + Math.floor(rand() * 7);
+        // Las cercanas, al pie de las flores; las demas llegan hasta el frente.
+        tuftY[k] = k < TUFTS_NEAR
+          ? BASE_Y - 1 + Math.floor(rand() * 7)
+          : BASE_Y - 1 + Math.floor(rand() * 17);
         // Casi todas sobreviven hasta la vida baja: el pasto se apaga, no se va.
         tuftShow[k] = 0.02 + rand() * 0.28;
         // Una de cada tres puede florecer, y solo con vida alta.
@@ -219,6 +302,24 @@
         tuftJitter[k] = (rand() - 0.5) * 0.16;
         tuftColor[k] = WILD[Math.floor(rand() * WILD.length)];
       }
+    }
+
+    /**
+     * Cambia el ancho logico conservando la partida. Reasigna los buffers que
+     * dependen del ancho: ocurre al redimensionar, nunca en el bucle.
+     */
+    function setWidth(width) {
+      const nw = clamp(width | 0, MIN_W, MAX_W);
+      if (nw === W) return;
+      W = nw;
+      backdrop = E.createFrame(W, H);
+      backdropScene = -1;
+      ground = E.createFrame(W, H);
+      drawGround(ground);
+      placeFlowers();
+      placeTufts();
+      g.moundsFor = -1;
+      g.animDirty = true;
     }
 
     function nextScene() {
@@ -530,6 +631,21 @@
       }
     }
 
+    /** Etapa del follaje segun la vida: 0 vivo, 1 apagado, 2 seco. */
+    function foliageStage(life) {
+      return life > 0.66 ? 0 : life > 0.36 ? 1 : 2;
+    }
+
+    /** Matorrales al fondo de la cama, detras de los tallos. */
+    function drawBushes(f) {
+      const v = g.vital;
+      for (let k = 0; k < BUSHES; k++) {
+        if (v < bushShow[k]) continue;
+        const st = foliageStage(v + bushJitter[k]);
+        E.blit(f, bushSprites[st * 2 + bushVariant[k]], bushX[k] - (BUSH_W >> 1), bushY[k] - BUSH_H);
+      }
+    }
+
     /** Matas y florecitas del suelo segun la vida suavizada. */
     function drawGroundLife(f) {
       const v = g.vital;
@@ -602,6 +718,7 @@
       E.blit(f, backdrop, 0, 0);
       E.blit(f, ground, 0, 0);
 
+      drawBushes(f);
       if (g.animDirty) refreshSprites();
       // Flores y monticulos: cada uno en su sprite, ya pintado. El visitante
       // ve desde el inicio que son cinco lugares.
@@ -629,8 +746,13 @@
     }
 
     return {
-      W: W,
+      get W() {
+        return W;
+      },
       H: H,
+      MIN_W: MIN_W,
+      MAX_W: MAX_W,
+      setWidth: setWidth,
       palette: pal,
       backdropIndex: R.sky[0],
       state: g,
@@ -656,7 +778,14 @@
           tufts++;
           if (g.vital + tuftJitter[k] > tuftBloom[k]) blooms++;
         }
-        return { tufts: tufts, blooms: blooms };
+        let bushes = 0;
+        let lush = 0;
+        for (let k = 0; k < BUSHES; k++) {
+          if (g.vital < bushShow[k]) continue;
+          bushes++;
+          if (foliageStage(g.vital + bushJitter[k]) === 0) lush++;
+        }
+        return { tufts: tufts, blooms: blooms, bushes: bushes, lush: lush };
       },
       get grid() {
         return g.grid;
@@ -670,6 +799,9 @@
   const api = {
     createGame: createGame,
     KEYS_USED: KEYS_USED,
+    MIN_W: MIN_W,
+    MAX_W: MAX_W,
+    H: H,
     STAGES: STAGES,
     FLOWERS: FLOWERS,
     UPPER: UPPER,

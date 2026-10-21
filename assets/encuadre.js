@@ -30,8 +30,23 @@
     return { scale: scale, width: (lw * scale) / dpr, height: (lh * scale) / dpr };
   }
 
+  /**
+   * Encuadre que llena el ancho: el factor sale del ancho disponible y el
+   * juego dibuja tantas columnas logicas como quepan, entre minW y maxW, con
+   * la altura logica lh fija.
+   *
+   * Solo se baja el factor si el juego no cupiera en la pantalla y hubiera que
+   * desplazarse para verlo; en ventanas normales de escritorio no ocurre.
+   */
+  function encuadreAncho(availW, availH, dpr, minW, maxW, lh) {
+    let scale = Math.max(1, Math.floor((availW * dpr) / minW));
+    while (scale > 1 && lh * scale > availH * dpr) scale--;
+    const lw = Math.max(minW, Math.min(maxW, Math.floor((availW * dpr) / scale)));
+    return { scale: scale, lw: lw, width: (lw * scale) / dpr, height: (lh * scale) / dpr };
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { encuadre: encuadre };
+    module.exports = { encuadre: encuadre, encuadreAncho: encuadreAncho };
     return;
   }
 
@@ -60,9 +75,19 @@
       const bx = sides(cs, 'borderLeftWidth', 'borderRightWidth');
       const by = sides(cs, 'borderTopWidth', 'borderBottomWidth');
       const availW = padre.clientWidth - sides(ps, 'paddingLeft', 'paddingRight') - bx;
-      const availH = maxHeight(c.dataset.maxh) - by;
-      if (availW <= 0 || availH <= 0) continue;
-      const r = encuadre(availW, availH, dpr, +c.dataset.lw, +c.dataset.lh);
+      let r;
+      if (c.dataset.lwmax) {
+        // Llena el ancho. El alto solo limita si el juego no cupiera en la
+        // pantalla: lo que queda debajo de donde empieza el recuadro.
+        const top = c.getBoundingClientRect().top + root.scrollY;
+        const availH = root.innerHeight - top - 12 - by;
+        if (availW <= 0 || availH <= 0) continue;
+        r = encuadreAncho(availW, availH, dpr, +c.dataset.lw, +c.dataset.lwmax, +c.dataset.lh);
+      } else {
+        const availH = maxHeight(c.dataset.maxh) - by;
+        if (availW <= 0 || availH <= 0) continue;
+        r = encuadre(availW, availH, dpr, +c.dataset.lw, +c.dataset.lh);
+      }
       const w = r.width + bx + 'px';
       const h = r.height + by + 'px';
       // Solo se escribe si cambia: escribir el estilo fuerza otro calculo de

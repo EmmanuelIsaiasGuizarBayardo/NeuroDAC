@@ -32,13 +32,13 @@ function check(cond, mensaje) {
 }
 
 /** Copia fresca del motor y del juego: el estado de entrada es de modulo. */
-function fresh(embedded, seed) {
+function fresh(embedded, seed, width) {
   delete require.cache[ENGINE];
   delete require.cache[JARDIN];
   const E = require(ENGINE);
   const J = require(JARDIN);
   E.setEmbedded(embedded);
-  const game = J.createGame({ seed: seed === undefined ? 7 : seed });
+  const game = J.createGame({ seed: seed === undefined ? 7 : seed, width: width });
   const frame = E.createFrame(game.W, game.H, 0);
   return { E, J, game, frame };
 }
@@ -211,6 +211,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const alta = ctx.game.groundCounts();
   check(vidaAlta >= 80, `vida: no subio con calma alta (${vidaAlta})`);
   check(alta.blooms >= 3, `vida: con vida alta casi no hay florecitas (${alta.blooms})`);
+  check(alta.lush >= 6, `vida: con vida alta los matorrales no estan vivos (${alta.lush})`);
   capture(ctx, 'jardin_vida_alta');
 
   // Calma baja hasta justo antes de marchitarse.
@@ -224,7 +225,32 @@ fs.mkdirSync(OUT, { recursive: true });
   check(g.banner === 0, 'vida: la flor se marchito antes de la captura');
   check(baja.blooms === 0, `vida: quedan ${baja.blooms} florecitas con vida baja`);
   check(baja.tufts < alta.tufts, `vida: el pasto no raleo (${baja.tufts} vs ${alta.tufts})`);
+  check(baja.lush === 0, `vida: quedan ${baja.lush} matorrales vivos con vida baja`);
   capture(ctx, 'jardin_vida_baja');
+}
+
+/* ------------------------------------------------- ancho variable */
+{
+  // El juego llena el ancho de su recuadro: a 310 columnas, el caso de una
+  // pantalla al 125 %, la escena se extiende y la partida es la misma.
+  const ctx = fresh(true, 23, 310);
+  ctx.game.state.scene = 2;
+  check(ctx.game.W === 310, `ancho: se pidio 310 y el juego tiene ${ctx.game.W}`);
+  run(ctx, 2 * (6 * 60 + 15) + 200, 88, true);
+  capture(ctx, 'jardin_ancho_310');
+
+  // Cambiar el ancho a mitad de partida conserva el jardin.
+  const g = ctx.game.state;
+  const antes = [g.done, g.current, g.stage[g.current], g.health[g.current]].join(',');
+  ctx.game.setWidth(360);
+  ctx.frame = ctx.E.createFrame(ctx.game.W, ctx.game.H, 0);
+  const despues = [g.done, g.current, g.stage[g.current], g.health[g.current]].join(',');
+  check(antes === despues, `ancho: la partida cambio al redimensionar (${antes} -> ${despues})`);
+  capture(ctx, 'jardin_ancho_360');
+  ctx.game.setWidth(9999);
+  check(ctx.game.W === 360, 'ancho: no respeta el maximo');
+  ctx.game.setWidth(10);
+  check(ctx.game.W === 240, 'ancho: no respeta el minimo');
 }
 
 /* ------------------------------------------ rotacion de escenarios */

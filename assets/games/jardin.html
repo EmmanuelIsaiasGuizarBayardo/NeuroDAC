@@ -35,6 +35,25 @@
   aplicarTema('dark');
   E.listen(aplicarTema);
 
+  // Ancho logico segun el tamano real del lienzo: la pagina ajusta el alto a
+  // un multiplo exacto y el juego dibuja tantas columnas como quepan.
+  // Reasigna buffers solo cuando el ancho cambia, nunca en el bucle.
+  function ajustarAncho() {
+    var dpr = window.devicePixelRatio || 1;
+    var r = E.fitWidth(
+      Math.floor(lienzo.clientWidth * dpr),
+      Math.floor(lienzo.clientHeight * dpr),
+      juego.MIN_W, juego.MAX_W, juego.H
+    );
+    if (r.w !== juego.W) {
+      juego.setWidth(r.w);
+      cuadro = E.createFrame(juego.W, juego.H, 0);
+      pantalla.setLogicalSize(juego.W, juego.H);
+    }
+  }
+  window.addEventListener('resize', ajustarAncho);
+  ajustarAncho();
+
   E.runLoop(
     function () { juego.tick(); },
     function () {

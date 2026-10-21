@@ -41,6 +41,20 @@ espacio disponible, contando la densidad de píxeles de la pantalla. El juego
 llena entonces su `<iframe>` sin resto y con escalado entero; lo que sobra
 queda fuera del recuadro, como margen de la página.
 
+Si además declara `logical_width_max`, el juego **llena el ancho** de su
+recuadro: la página elige el factor por el ancho disponible y el juego dibuja
+tantas columnas lógicas como quepan, entre el mínimo y ese máximo, con la
+altura lógica fija. Jardín va de 240 a 360 columnas con 180 de alto; los
+escenarios centran su diseño de 240 y sus perfiles continúan hacia los lados.
+El factor solo baja si el juego no cupiera en la pantalla y hubiera que
+desplazarse para verlo. Para que la aparición de la barra de desplazamiento no
+angoste la columna y produzca un vaivén, la página reserva su espacio con
+`scrollbar-gutter: stable`.
+
+La tolerancia del redondeo va en píxeles de dispositivo, no como fracción del
+factor: con densidad 1.75 y factor 11, el punto flotante da 1979.999 por 1980,
+y una fracción fija dejaba caer el factor un paso entero.
+
 No se escala por CSS a un factor no entero para llenar el marco: sobre el
 tramado Bayer del cielo eso produce *moiré*, bandas que no existen en el
 dibujo. `tests/js/encuadre.js` verifica, para miles de combinaciones de

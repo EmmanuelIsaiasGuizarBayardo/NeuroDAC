@@ -765,13 +765,35 @@
 
   /**
    * Factor entero con el que un area de cw x ch pixeles de dispositivo muestra
-   * una region logica de vw x vh. La tolerancia absorbe el redondeo del
-   * navegador: con densidades fraccionarias, como 1.75, el lienzo puede medir
-   * un pixel de dispositivo menos que el multiplo exacto, y sin ella el factor
-   * caeria un paso entero.
+   * una region logica de vw x vh. La tolerancia absorbe el redondeo: con
+   * densidades fraccionarias, como 1.75, el lienzo puede medir uno o dos
+   * pixeles de dispositivo menos que el multiplo exacto (el navegador redondea
+   * y el punto flotante da 1979.999 por 1980), y sin ella el factor caeria un
+   * paso entero. Va en pixeles y no como fraccion del factor: una fraccion
+   * fija cubre menos pixeles cuanto mayor es la resolucion logica.
    */
+  const SLACK_PX = 2;
+
   function integerScale(cw, ch, vw, vh) {
-    return Math.max(1, Math.floor(Math.min(cw / vw, ch / vh) + 0.01));
+    return Math.max(1, Math.floor(Math.min((cw + SLACK_PX) / vw, (ch + SLACK_PX) / vh)));
+  }
+
+  /**
+   * Factor y ancho logico para llenar un lienzo de cw x ch pixeles de
+   * dispositivo con altura logica fija h y ancho logico entre minW y maxW.
+   *
+   * El factor sale del alto, que la pagina ajusta a un multiplo exacto; el
+   * ancho logico, de cuantas columnas caben a ese factor. Asi el juego llena
+   * el ancho completo con escalado entero en lugar de dejar franjas.
+   */
+  function fitWidth(cw, ch, minW, maxW, h) {
+    const scale = Math.max(1, Math.floor((ch + SLACK_PX) / h));
+    // Redondeo al mas cercano y no floor: si el navegador deja el lienzo un
+    // pixel de dispositivo corto, floor perderia una columna logica entera y
+    // dejaria una franja. Lo peor del redondeo es recortar medio pixel logico
+    // en el borde.
+    const w = Math.max(minW, Math.min(maxW, Math.floor(cw / scale + 0.5)));
+    return { scale: scale, w: w };
   }
 
   /**
@@ -781,12 +803,21 @@
   function createPresenter(canvas, w, h, pal) {
     const doc = root.document;
     const small = doc.createElement('canvas');
-    small.width = w;
-    small.height = h;
     const sctx = small.getContext('2d');
-    const image = sctx.createImageData(w, h);
-    const out = new Uint32Array(image.data.buffer);
+    let image = null;
+    let out = null;
     const ctx = canvas.getContext('2d');
+
+    /** Asigna el buffer de presentacion; solo al crear y al cambiar de tamano. */
+    function allocate(nw, nh) {
+      w = nw;
+      h = nh;
+      small.width = w;
+      small.height = h;
+      image = sctx.createImageData(w, h);
+      out = new Uint32Array(image.data.buffer);
+    }
+    allocate(w, h);
 
     const luts = {};
     for (const name of Object.keys(pal.rgb)) luts[name] = presentLUT(pal, name);
@@ -833,6 +864,16 @@
       grid = !!on;
     }
 
+    /** Cambia la resolucion logica; vuelve al cuadro completo. */
+    function setLogicalSize(nw, nh) {
+      allocate(nw, nh);
+      vx = 0;
+      vy = 0;
+      vw = w;
+      vh = h;
+      resize();
+    }
+
     function setTheme(name, backdropIndex) {
       lut = luts[name] || luts.base;
       const table = pal.rgb[name] || pal.rgb.base;
@@ -864,6 +905,7 @@
       resize: resize,
       setView: setView,
       setGrid: setGrid,
+      setLogicalSize: setLogicalSize,
     };
   }
 
@@ -1019,6 +1061,7 @@
     runLoop: runLoop,
     createPresenter: createPresenter,
     integerScale: integerScale,
+    fitWidth: fitWidth,
     input: input,
     listen: listen,
     endTick: endTick,

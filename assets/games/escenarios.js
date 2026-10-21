@@ -11,19 +11,57 @@
 (function (root) {
   'use strict';
 
+  /** Ancho para el que estan disenados los escenarios. */
+  const DESIGN_W = 240;
+
+  /**
+   * Desplazamiento del diseno dentro del lienzo actual. El lienzo puede ser
+   * mas ancho que el diseno: este queda centrado y sus perfiles, que son
+   * funciones continuas, siguen hacia los lados. Cada `draw` lo fija.
+   */
+  let ox = 0;
+
+  function centerFor(f) {
+    ox = Math.round((f.w - DESIGN_W) / 2);
+  }
+
+  /** Columnas que cubren todo el lienzo, en coordenadas del diseno. */
+  function leftEdge() {
+    return -ox;
+  }
+
+  function rightEdge(f) {
+    return f.w - 1 - ox;
+  }
+
+  function px(f, x, y, index) {
+    E_.pixel(f, x + ox, y, index);
+  }
+
+  function rc(f, x, y, w, h, index) {
+    E_.rect(f, x + ox, y, w, h, index);
+  }
+
   /**
    * Rellena columnas desde un perfil superior hasta el horizonte.
-   * top(x) devuelve la altura del borde superior en esa columna, o un valor
-   * mayor o igual al horizonte si la columna esta vacia.
+   * x0 y x1 van en coordenadas del diseno; top(x) devuelve la altura del borde
+   * superior en esa columna, o un valor mayor o igual al horizonte si la
+   * columna esta vacia.
    */
   function fillProfile(f, x0, x1, horizon, top, tone) {
-    for (let x = Math.max(0, x0); x <= Math.min(f.w - 1, x1); x++) {
+    const a = Math.max(-ox, x0);
+    const b = Math.min(f.w - 1 - ox, x1);
+    for (let x = a; x <= b; x++) {
       const t = Math.round(top(x));
+      const col = x + ox;
       for (let y = Math.max(0, t); y < horizon; y++) {
-        f.px[y * f.w + x] = tone(x, y, t);
+        f.px[y * f.w + col] = tone(x, y, t);
       }
     }
   }
+
+  // El motor llega al construir los escenarios; px y rc lo necesitan.
+  let E_ = null;
 
   /* ------------------------------------------------------------- montanas */
 
@@ -40,7 +78,8 @@
       id: 'montanas',
       nombre: 'Montañas',
       draw(f, horizon) {
-        fillProfile(f, 0, f.w - 1, horizon, far, function (x, y, t) {
+        centerFor(f);
+        fillProfile(f, leftEdge(), rightEdge(f), horizon, far, function (x, y, t) {
           // Arista iluminada en las laderas que miran a la izquierda.
           if (y - t < 1 && far(x - 1) > far(x)) return R.sky[3];
           // Cuerpo solido para que conserve el borde; bruma tramada solo
@@ -48,7 +87,7 @@
           const haze = (y - (horizon - 14)) / 14;
           return haze > 0 && E.bayer(x, y) < haze * 0.6 ? R.sky[3] : R.sky[2];
         });
-        fillProfile(f, 0, f.w - 1, horizon, near, function (x, y) {
+        fillProfile(f, leftEdge(), rightEdge(f), horizon, near, function (x, y) {
           return E.ditherTone(R.foliage, 0.6 - (horizon - y) * 0.01, x, y);
         });
       },
@@ -90,8 +129,9 @@
       id: 'chichen',
       nombre: 'Chichén Itzá',
       draw(f, horizon) {
+        centerFor(f);
         // Selva baja detras de la Gran Nivelacion.
-        fillProfile(f, 0, f.w - 1, horizon, jungle, function (x, y, t) {
+        fillProfile(f, leftEdge(), rightEdge(f), horizon, jungle, function (x, y, t) {
           return y - t < 1 ? R.foliage[1] : R.foliage[0];
         });
 
@@ -106,7 +146,7 @@
               // La fila superior de cada cuerpo recibe la luz del atardecer.
               const lip = r === TIER_H - 1;
               const lit = lip && x <= CX + w * 0.4;
-              E.pixel(f, x, y, lip ? (lit ? SUN : STONE_LIT) : stone(x, w));
+              px(f, x, y, lip ? (lit ? SUN : STONE_LIT) : stone(x, w));
             }
           }
         }
@@ -115,27 +155,27 @@
         const platform = horizon - TIERS * TIER_H;
         for (let y = platform; y < horizon; y++) {
           for (let x = CX - STAIR_HW; x <= CX + STAIR_HW; x++) {
-            E.pixel(f, x, y, (y & 1) === 0 ? STONE_LIT : STONE);
+            px(f, x, y, (y & 1) === 0 ? STONE_LIT : STONE);
           }
-          E.pixel(f, CX - STAIR_HW - 1, y, STONE_DARK);
-          E.pixel(f, CX + STAIR_HW + 1, y, STONE_DARK);
+          px(f, CX - STAIR_HW - 1, y, STONE_DARK);
+          px(f, CX + STAIR_HW + 1, y, STONE_DARK);
         }
 
         // Cabezas de serpiente al pie de las alfardas.
-        E.rect(f, CX - STAIR_HW - 4, horizon - 3, 4, 3, STONE_DARK);
-        E.rect(f, CX + STAIR_HW + 1, horizon - 3, 4, 3, STONE_DARK);
-        E.rect(f, CX - STAIR_HW - 4, horizon - 3, 4, 1, SUN);
-        E.rect(f, CX + STAIR_HW + 1, horizon - 3, 4, 1, STONE_LIT);
+        rc(f, CX - STAIR_HW - 4, horizon - 3, 4, 3, STONE_DARK);
+        rc(f, CX + STAIR_HW + 1, horizon - 3, 4, 3, STONE_DARK);
+        rc(f, CX - STAIR_HW - 4, horizon - 3, 4, 1, SUN);
+        rc(f, CX + STAIR_HW + 1, horizon - 3, 4, 1, STONE_LIT);
 
         // Templo en la cima, con tres vanos y cresteria.
         const top = platform - 9;
-        E.rect(f, CX - 11, top, 23, 9, STONE);
-        E.rect(f, CX + 5, top, 7, 9, STONE_DARK);
-        E.rect(f, CX - 12, top, 25, 1, SUN);
-        E.rect(f, CX - 8, top + 4, 3, 5, DOOR);
-        E.rect(f, CX - 2, top + 3, 5, 6, DOOR);
-        E.rect(f, CX + 6, top + 4, 3, 5, DOOR);
-        for (let x = CX - 10; x <= CX + 10; x += 4) E.rect(f, x, top - 2, 2, 2, STONE);
+        rc(f, CX - 11, top, 23, 9, STONE);
+        rc(f, CX + 5, top, 7, 9, STONE_DARK);
+        rc(f, CX - 12, top, 25, 1, SUN);
+        rc(f, CX - 8, top + 4, 3, 5, DOOR);
+        rc(f, CX - 2, top + 3, 5, 6, DOOR);
+        rc(f, CX + 6, top + 4, 3, 5, DOOR);
+        for (let x = CX - 10; x <= CX + 10; x += 4) rc(f, x, top - 2, 2, 2, STONE);
       },
     };
   }
@@ -209,10 +249,11 @@
       id: 'volcanes',
       nombre: 'Iztaccíhuatl y Popocatépetl',
       draw(f, horizon) {
-        fillProfile(f, 0, 180, horizon, izta, function (x, y) {
+        centerFor(f);
+        fillProfile(f, leftEdge(), 180, horizon, izta, function (x, y) {
           return rock(x, y, 70, 84, 1.2);
         });
-        fillProfile(f, 110, f.w - 1, horizon, popo, function (x, y) {
+        fillProfile(f, 110, rightEdge(f), horizon, popo, function (x, y) {
           return rock(x, y, POPO_X, POPO_TOP + 16, 3);
         });
 
@@ -227,13 +268,13 @@
               const u = (x - cx) / (r * 1.4);
               const v = (y - cy) / r;
               if (u * u + v * v <= 1 && E.bayer(x, y) < alpha) {
-                E.pixel(f, x, y, v < -0.2 ? SNOW_SHADE : ASH);
+                px(f, x, y, v < -0.2 ? SNOW_SHADE : ASH);
               }
             }
           }
         }
 
-        fillProfile(f, 0, f.w - 1, horizon, foothills, function (x, y, t) {
+        fillProfile(f, leftEdge(), rightEdge(f), horizon, foothills, function (x, y, t) {
           return y - t < 1 ? R.foliage[1] : R.foliage[0];
         });
       },
@@ -244,6 +285,7 @@
 
   /** Construye todos los escenarios con sus materiales, una sola vez. */
   function createAll(E, pal) {
+    E_ = E;
     return FACTORIES.map(function (factory) {
       return factory(E, pal);
     });
