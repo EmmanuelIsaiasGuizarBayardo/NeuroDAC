@@ -52,6 +52,11 @@
   const DONE_TICKS = 210;
   const WILT_TICKS = 150;
 
+  /** Matas de pasto en la cama de tierra; reaccionan a la vida. */
+  const TUFTS = 34;
+  /** Matas que se reparten cerca de cada flor; el resto, por toda la cama. */
+  const TUFTS_NEAR = 25;
+
   const SPR_W = 44;
   const SPR_H = 100;
   const SPR_BASE_X = 22;
@@ -122,6 +127,18 @@
     const XS = new Float32Array(FLOWERS);
     for (let i = 0; i < FLOWERS; i++) XS[i] = 26 + i * 47;
 
+    // Suelo vivo. Cada mata tiene sus propios umbrales: asi, cuando la vida
+    // cambia, el suelo cambia de mata en mata y no todo a la vez.
+    const tuftX = new Int16Array(TUFTS);
+    const tuftY = new Uint8Array(TUFTS);
+    const tuftShow = new Float32Array(TUFTS); // vida minima para aparecer
+    const tuftBloom = new Float32Array(TUFTS); // vida minima para florecer
+    const tuftJitter = new Float32Array(TUFTS); // corrimiento de su color
+    const tuftColor = new Uint8Array(TUFTS);
+    const WILD = new Uint8Array([
+      R.petalGold[2], R.petalWhite[2], R.petalRose[2], R.petalBlue[2], R.petalViolet[2],
+    ]);
+
     // Estado en un solo objeto con arreglos tipados: nada se aloca por tick.
     const g = {
       ticks: 0,
@@ -134,6 +151,10 @@
       beat: new Uint16Array(FLOWERS),
       species: new Uint8Array(FLOWERS),
       calm: 0.5,
+      // Vida suavizada de la flor actual: la escena la sigue en ~medio segundo.
+      vital: 0.5,
+      // Intensidad del polen; nace en cero al cruzar el umbral y crece.
+      pollenRate: 0,
       phase: 0,
       banner: BANNER_NONE,
       bannerTicks: 0,
@@ -168,6 +189,7 @@
         g.species[i] = g.species[j];
         g.species[j] = t;
       }
+      placeTufts();
       g.current = 0;
       g.done = 0;
       g.banner = BANNER_NONE;
@@ -176,6 +198,27 @@
       if (newScene) g.scene = ESC.pickNext(scenes.length, g.scene, rand);
       g.moundsFor = -1;
       g.animDirty = true;
+    }
+
+    function placeTufts() {
+      for (let k = 0; k < TUFTS; k++) {
+        let x;
+        if (k < TUFTS_NEAR) {
+          // Alrededor de cada lugar, sin tapar el tallo ni el monticulo.
+          const side = rand() < 0.5 ? -1 : 1;
+          x = XS[k % FLOWERS] + side * (8 + rand() * 13);
+        } else {
+          x = 4 + rand() * (W - 8);
+        }
+        tuftX[k] = Math.round(clamp(x, 3, W - 4));
+        tuftY[k] = BASE_Y - 1 + Math.floor(rand() * 7);
+        // Casi todas sobreviven hasta la vida baja: el pasto se apaga, no se va.
+        tuftShow[k] = 0.02 + rand() * 0.28;
+        // Una de cada tres puede florecer, y solo con vida alta.
+        tuftBloom[k] = k % 3 === 0 ? 0.58 + rand() * 0.3 : 9;
+        tuftJitter[k] = (rand() - 0.5) * 0.16;
+        tuftColor[k] = WILD[Math.floor(rand() * WILD.length)];
+      }
     }
 
     function nextScene() {
@@ -269,7 +312,19 @@
         if (--g.bannerTicks <= 0) resetGarden(true);
       } else if (ready && valid) {
         grow(sig);
-        if (sig > UPPER) spawnPollen((sig - UPPER) / (100 - UPPER));
+      }
+
+      // La vida se ve en el suelo. Es otro canal que la calma a proposito:
+      // si el pasto tambien se meciera, no se sabria cual de las dos se ve.
+      g.vital += (g.health[Math.min(g.current, FLOWERS - 1)] / 100 - g.vital) * 0.03;
+
+      // El polen nace en cero al cruzar el umbral y crece en cerca de un
+      // segundo; al bajar del umbral se detiene en el acto.
+      if (g.banner === BANNER_NONE && ready && valid && sig > UPPER) {
+        g.pollenRate += ((sig - UPPER) / (100 - UPPER) - g.pollenRate) * 0.02;
+        spawnPollen(g.pollenRate);
+      } else {
+        g.pollenRate = 0;
       }
 
       E.updateParticles(pollen, 0.0012);
@@ -277,8 +332,8 @@
       E.endTick();
     }
 
-    function spawnPollen(strength) {
-      if (rand() > 0.12 + 0.5 * strength) return;
+    function spawnPollen(rate) {
+      if (rand() > 0.45 * rate) return;
       const i = g.current;
       const headY = BASE_Y - (10 + g.stage[i] * 11);
       const color = rand() < 0.5 ? R.petalGold[2] : PETAL_LIGHT[g.species[i]];
@@ -286,9 +341,10 @@
         pollen,
         XS[i] + springs[i * 2] + (rand() - 0.5) * 12,
         headY + (rand() - 0.5) * 6,
-        (rand() - 0.5) * 0.25,
-        -0.15 - rand() * 0.25,
-        120 + rand() * 80,
+        (rand() - 0.5) * 0.18,
+        // Sube despacio: unos 4 a 11 pixeles logicos por segundo.
+        -0.06 - rand() * 0.12,
+        150 + rand() * 90,
         color
       );
     }
@@ -465,9 +521,58 @@
         const x = pollen.x[k] | 0;
         const y = pollen.y[k] | 0;
         const life = pollen.life[k] / pollen.maxLife[k];
-        // Se desvanece por tramado en el ultimo tercio de su vida.
+        const age = pollen.maxLife[k] - pollen.life[k];
+        // Aparece y se desvanece por tramado: no brota de golpe ni se apaga
+        // de golpe.
+        if (age < 20 && E.bayer(x, y) >= age / 20) continue;
         if (life < 0.33 && E.bayer(x, y) >= life / 0.33) continue;
         E.pixel(f, x, y, pollen.color[k]);
+      }
+    }
+
+    /** Matas y florecitas del suelo segun la vida suavizada. */
+    function drawGroundLife(f) {
+      const v = g.vital;
+      for (let k = 0; k < TUFTS; k++) {
+        if (v < tuftShow[k]) continue;
+        const life = v + tuftJitter[k];
+        // Verde y alto con vida; apagado; seco y corto.
+        let body;
+        let tip;
+        let h;
+        if (life > 0.66) {
+          body = R.grass[1];
+          tip = R.grass[2];
+          h = 4;
+        } else if (life > 0.36) {
+          body = R.grass[0];
+          tip = R.grass[1];
+          h = 3;
+        } else {
+          // Seco: oliva con puntas de paja. Cafe sobre tierra no se distinguia.
+          body = R.grass[0];
+          tip = R.wood[2];
+          h = 2;
+        }
+        const x = tuftX[k];
+        const y = tuftY[k];
+        // Hoja central y dos laterales que se abren.
+        for (let j = 0; j < h; j++) E.pixel(f, x, y - j, j === h - 1 ? tip : body);
+        E.pixel(f, x - 1, y, body);
+        E.pixel(f, x + 1, y, body);
+        if (h >= 3) {
+          E.pixel(f, x - 2, y - 1, tip);
+          E.pixel(f, x + 2, y - 1, tip);
+        }
+        // Florecita silvestre sobre la hoja central, solo con vida alta.
+        if (life > tuftBloom[k]) {
+          E.pixel(f, x, y - h, tuftColor[k]);
+          if (life > tuftBloom[k] + 0.08) {
+            E.pixel(f, x - 1, y - h, tuftColor[k]);
+            E.pixel(f, x + 1, y - h, tuftColor[k]);
+            E.pixel(f, x, y - h, R.orange[2]);
+          }
+        }
       }
     }
 
@@ -503,6 +608,8 @@
       for (let i = 0; i < FLOWERS; i++) {
         E.blit(f, sprites[i], XS[i] - SPR_BASE_X, BASE_Y - SPR_BASE_Y);
       }
+      // Delante de los tallos: el pasto crece al pie de las flores.
+      drawGroundLife(f);
 
       drawPollen(f);
       drawHud(f);
@@ -539,6 +646,17 @@
       },
       pollenCount: function () {
         return pollen.count;
+      },
+      /** Matas visibles y florecitas abiertas con la vida actual. */
+      groundCounts: function () {
+        let tufts = 0;
+        let blooms = 0;
+        for (let k = 0; k < TUFTS; k++) {
+          if (g.vital < tuftShow[k]) continue;
+          tufts++;
+          if (g.vital + tuftJitter[k] > tuftBloom[k]) blooms++;
+        }
+        return { tufts: tufts, blooms: blooms };
       },
       get grid() {
         return g.grid;

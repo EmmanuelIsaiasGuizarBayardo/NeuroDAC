@@ -188,6 +188,45 @@ fs.mkdirSync(OUT, { recursive: true });
     'completo: el jardin no se renovo con otro escenario');
 }
 
+/* --------------------------------------- el polen aparece gradualmente */
+{
+  // Al cruzar el umbral no debe brotar de golpe: su intensidad parte de cero.
+  const ctx = fresh(true, 17);
+  run(ctx, 300, 20, true);
+  run(ctx, 15, 90, true);
+  const alCruzar = ctx.game.pollenCount();
+  check(alCruzar <= 2, `polen: brota de golpe al cruzar el umbral (${alCruzar} en 1/4 s)`);
+  run(ctx, 180, 90, true);
+  check(ctx.game.pollenCount() > alCruzar, 'polen: no crece despues de cruzar el umbral');
+}
+
+/* -------------------------------------------- la vida se ve en el suelo */
+{
+  const ctx = fresh(true, 23);
+  ctx.game.state.scene = 1;
+  // Calma alta sostenida: la vida sube con cada etapa.
+  run(ctx, 2 * (6 * 60 + 15) + 120, 90, true);
+  const g = ctx.game.state;
+  const vidaAlta = g.health[g.current];
+  const alta = ctx.game.groundCounts();
+  check(vidaAlta >= 80, `vida: no subio con calma alta (${vidaAlta})`);
+  check(alta.blooms >= 3, `vida: con vida alta casi no hay florecitas (${alta.blooms})`);
+  capture(ctx, 'jardin_vida_alta');
+
+  // Calma baja hasta justo antes de marchitarse.
+  let t = 0;
+  while (g.health[g.current] > 12 && g.banner === 0 && t < 30 * 60) {
+    run(ctx, 1, 20, true);
+    t++;
+  }
+  run(ctx, 90, 20, true);
+  const baja = ctx.game.groundCounts();
+  check(g.banner === 0, 'vida: la flor se marchito antes de la captura');
+  check(baja.blooms === 0, `vida: quedan ${baja.blooms} florecitas con vida baja`);
+  check(baja.tufts < alta.tufts, `vida: el pasto no raleo (${baja.tufts} vs ${alta.tufts})`);
+  capture(ctx, 'jardin_vida_baja');
+}
+
 /* ------------------------------------------ rotacion de escenarios */
 {
   const ctx = fresh(true, 21);

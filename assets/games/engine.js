@@ -764,6 +764,17 @@
   /* ------------------------------------------------------------ presentacion */
 
   /**
+   * Factor entero con el que un area de cw x ch pixeles de dispositivo muestra
+   * una region logica de vw x vh. La tolerancia absorbe el redondeo del
+   * navegador: con densidades fraccionarias, como 1.75, el lienzo puede medir
+   * un pixel de dispositivo menos que el multiplo exacto, y sin ella el factor
+   * caeria un paso entero.
+   */
+  function integerScale(cw, ch, vw, vh) {
+    return Math.max(1, Math.floor(Math.min(cw / vw, ch / vh) + 0.01));
+  }
+
+  /**
    * Convierte el framebuffer a RGBA con una LUT Uint32 y lo escala al canvas
    * visible por un factor entero en pixeles de dispositivo.
    */
@@ -799,7 +810,7 @@
       const ch = Math.max(1, Math.floor(canvas.clientHeight * dpr));
       canvas.width = cw;
       canvas.height = ch;
-      scale = Math.max(1, Math.floor(Math.min(cw / vw, ch / vh)));
+      scale = integerScale(cw, ch, vw, vh);
       ox = (cw - vw * scale) >> 1;
       oy = (ch - vh * scale) >> 1;
       ctx.imageSmoothingEnabled = false;
@@ -1007,6 +1018,7 @@
     stepSpring: stepSpring,
     runLoop: runLoop,
     createPresenter: createPresenter,
+    integerScale: integerScale,
     input: input,
     listen: listen,
     endTick: endTick,

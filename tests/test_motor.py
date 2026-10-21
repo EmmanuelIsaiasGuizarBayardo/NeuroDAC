@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "capturas_motor.js"
 RECEIVER = ROOT / "tests" / "js" / "recibir.js"
 JARDIN_HARNESS = ROOT / "tools" / "capturas_jardin.js"
+FRAMING = ROOT / "tests" / "js" / "encuadre.js"
 
 
 @unittest.skipIf(shutil.which("node") is None, "Node no esta instalado")
@@ -63,6 +64,23 @@ class TestJardin(unittest.TestCase):
         self.assertIn("OK", result.stdout)
         for name in ("jardin_compuerta.png", "jardin_calma_alta.png", "jardin_hoja.png"):
             self.assertTrue((out / name).is_file(), name)
+
+
+@unittest.skipIf(shutil.which("node") is None, "Node no esta instalado")
+class TestFraming(unittest.TestCase):
+    """El contenedor se ajusta al multiplo entero exacto y el motor lo llena."""
+
+    def test_no_bands_at_any_density(self):
+        result = subprocess.run(
+            ["node", str(FRAMING)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("OK", result.stdout)
 
 
 @unittest.skipIf(shutil.which("node") is None, "Node no esta instalado")

@@ -95,7 +95,11 @@ class GameSpec:
     game_width : int
         Columnas de Bootstrap para el lienzo.
     canvas_height : str
-        Altura CSS del lienzo.
+        Altura CSS del lienzo; con `logical_size`, es la altura maxima.
+    logical_size : tuple of int, optional
+        Resolucion logica de un juego de pixel art. Con ella, la pagina ajusta
+        el contenedor al mayor multiplo entero que cabe (assets/encuadre.js),
+        y el juego llena su iframe sin franjas. Debe coincidir con la del juego.
     """
 
     prefix: str
@@ -107,6 +111,7 @@ class GameSpec:
     explanation: list = field(default_factory=list)
     game_width: int = 7
     canvas_height: str = "66vh"
+    logical_size: tuple[int, int] | None = None
 
 
 def build(spec: GameSpec) -> callable:
@@ -317,6 +322,9 @@ def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str, sim_id: str) -> 
         html.Div(
             className="game-canvas-container",
             style={"height": spec.canvas_height, "position": "relative"},
+            # Datos para el encuadre entero; sin ellos el contenedor conserva
+            # su altura fija.
+            **_frame_data(spec),
             children=[
                 html.Iframe(
                     id=frame_id,
@@ -339,6 +347,14 @@ def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str, sim_id: str) -> 
         ),
         html.Div(className="edu-panel mt-2", children=spec.explanation),
     ]
+
+
+def _frame_data(spec: GameSpec) -> dict:
+    """Atributos data-* que lee assets/encuadre.js."""
+    if spec.logical_size is None:
+        return {}
+    lw, lh = spec.logical_size
+    return {"data-lw": str(lw), "data-lh": str(lh), "data-maxh": spec.canvas_height}
 
 
 def _side_column(spec: GameSpec, ids: PanelIds, graph_id: str) -> list:

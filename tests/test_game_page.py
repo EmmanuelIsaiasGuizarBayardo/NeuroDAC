@@ -324,6 +324,47 @@ class TestLayout(unittest.TestCase):
         badge = next(n for n in walk(build(spec)()) if getattr(n, "id", None) == "aviso-sim")
         self.assertIn("d-none", badge.className)
 
+    def test_logical_size_matches_the_game(self):
+        # Si la pagina declara otra resolucion que la que dibuja el juego, el
+        # encuadre ajusta a un tamano equivocado sin que nada falle a la vista.
+        import ast
+
+        page = (ASSETS.parent.parent / "pages" / "jardin.py").read_text(encoding="utf-8")
+        declared = next(
+            ast.literal_eval(kw.value)
+            for node in ast.walk(ast.parse(page))
+            if isinstance(node, ast.Call)
+            for kw in node.keywords
+            if kw.arg == "logical_size"
+        )
+        game = (ASSETS / "jardin.js").read_text(encoding="utf-8")
+        w = int(re.search(r"const W = (\d+);", game).group(1))
+        h = int(re.search(r"const H = (\d+);", game).group(1))
+        self.assertEqual(tuple(declared), (w, h))
+
+    def test_container_exposes_the_logical_size(self):
+        from neurodac.game_page import build
+
+        def container(spec):
+            return next(
+                n
+                for n in walk(build(spec)())
+                if getattr(n, "className", None) == "game-canvas-container"
+            )
+
+        base = {
+            "title": "Encuadre",
+            "asset": "games/jardin.html",
+            "signal": "meditation",
+            "keys": (),
+        }
+        con = container(GameSpec(prefix="enc1", path="/enc1", logical_size=(240, 180), **base))
+        attrs = con.to_plotly_json()["props"]
+        self.assertEqual((attrs["data-lw"], attrs["data-lh"]), ("240", "180"))
+        self.assertEqual(attrs["data-maxh"], "66vh")
+        sin = container(GameSpec(prefix="enc2", path="/enc2", **base))
+        self.assertNotIn("data-lw", sin.to_plotly_json()["props"])
+
     def test_sim_badge_does_not_cover_the_game(self):
         # Encima del lienzo tapaba el marcador de los juegos; va como franja.
         from neurodac.game_page import build

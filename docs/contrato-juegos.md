@@ -31,6 +31,23 @@ incluidas subcarpetas. Para que el motor no se ejecute dentro de la aplicación,
 archivo, nunca contra la ruta. Los archivos siguen servidos en
 `/assets/games/...`, que es lo que carga el `<iframe>`.
 
+## Encuadre
+
+Un juego de pixel art declara su resolución lógica en el `GameSpec` de su
+página (`logical_size`), y debe ser la misma que dibuja; una prueba compara
+ambas. Con ella, `assets/encuadre.js`, que sí corre en la página principal,
+ajusta el contenedor al mayor múltiplo entero de esa resolución que cabe en el
+espacio disponible, contando la densidad de píxeles de la pantalla. El juego
+llena entonces su `<iframe>` sin resto y con escalado entero; lo que sobra
+queda fuera del recuadro, como margen de la página.
+
+No se escala por CSS a un factor no entero para llenar el marco: sobre el
+tramado Bayer del cielo eso produce *moiré*, bandas que no existen en el
+dibujo. `tests/js/encuadre.js` verifica, para miles de combinaciones de
+espacio y densidad (incluidas 1.25, 1.5 y 1.75), que el presentador del motor
+elija el mismo factor que el encuadre y no deje franjas, aun si el navegador
+redondea un píxel de dispositivo por debajo.
+
 ## Mensajes de la aplicación al juego
 
 Un objeto plano. Los campos son opcionales salvo `source`; el juego conserva el
