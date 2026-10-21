@@ -108,14 +108,13 @@
 }
 
 /* --- Aviso de senal simulada ---
-   Encima del lienzo y de la compuerta: el estandar exige declarar toda senal
-   simulada en lo que mira el publico, mientras este activa. */
+   El estandar exige declarar toda senal simulada en lo que mira el publico,
+   mientras este activa. Va como franja sobre el juego o la grafica y no
+   encima de ellos: encima tapaba el marcador de los juegos. */
 .nd-sim-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 30;
-    max-width: 60%;
+    display: block;
+    margin-bottom: 6px;
+    text-align: center;
     padding: 4px 10px;
     border-radius: 6px;
     border: 1px solid var(--nd-accent-orange);

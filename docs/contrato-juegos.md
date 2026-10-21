@@ -18,7 +18,9 @@ assets/games/
 ├── engine.js       # motor compartido: framebuffer, rasterizador, bucle, receptor
 ├── palette.js      # paleta compartida de 48 colores en rampas
 ├── escenarios.js   # fondos de Jardín
-├── jardin.html     # un archivo por juego, con su resolución lógica
+├── textos.js       # generado desde content/; no se edita a mano
+├── jardin.js       # lógica de Jardín; corre en el navegador y en Node
+├── jardin.html     # cascarón: carga los módulos y conecta el bucle
 └── carrera.html
 ```
 
@@ -85,15 +87,28 @@ corriendo con la señal congelada.
 
 ## Aviso de señal simulada
 
-Mientras la fuente es la diadema simulada, la página muestra encima del juego
-el aviso `avisos.simulada` de `content/`. Lo pone la página y no el juego, para
-que valga igual con cualquier juego.
+Mientras la fuente es la diadema simulada, la página muestra el aviso
+`avisos.simulada` de `content/` como franja sobre el juego. Va sobre el lienzo
+y no encima de él, para no tapar el marcador. Lo pone la página y no el juego,
+para que valga igual con cualquier juego.
+
+## Textos dentro del lienzo
+
+Lo que un juego dibuja en su lienzo también es texto que ve el público, así que
+vive en `content/`, en la sección `pantalla` de cada juego. Como el juego corre
+en el navegador y no puede leer `content/`, `tools/generar_textos_juegos.py`
+genera `assets/games/textos.js`. Se versiona porque Dash lo sirve tal cual;
+`tests/test_content.py` falla si está desfasado del contenido, y el arnés del
+juego falla si un texto usa un carácter que la fuente bitmap no puede dibujar.
 
 ## Modo autónomo
 
-Si no llega ningún mensaje con `source: "neurodac"` en 1.5 s, el juego asume
-que se abrió directo en el navegador: la compuerta se considera abierta y la
-señal se controla con teclado. Sirve para desarrollar un juego sin levantar la
+Un juego abierto directo en el navegador es autónomo: la compuerta se
+considera abierta y la señal se controla con teclado. Dentro del `<iframe>` de
+la aplicación nunca lo es; el motor lo decide comparando `self` con `top`. No
+se decide por tiempo sin mensajes: el primer mensaje de la página puede llegar
+antes de que el juego cargue y perderse, y el juego se declararía autónomo
+dentro de la aplicación, con la flor marchitándose detrás de la compuerta. Sirve para desarrollar un juego sin levantar la
 aplicación ni conectar la diadema. Las herramientas de depuración (rejilla,
 acercamiento, hoja de sprites) solo existen en este modo: en la aplicación no
 se muestran herramientas del personal.
@@ -110,6 +125,13 @@ otras.
 | ↑ ↓   | simular la señal en modo autónomo (Jardín)           |
 | W S   | simular la señal en modo autónomo (Carrera)          |
 | G Z H | rejilla, acercamiento y hoja de sprites; solo modo autónomo |
+| B     | siguiente escenario de Jardín; solo modo autónomo    |
+
+Jardín no atiende ninguna tecla dentro de la aplicación: la señal viene solo de
+la diadema o de la fuente simulada, que se declara en pantalla. Si las flechas
+la alteraran, lo mostrado aparentaría ser meditación sin serlo. Un juego sobre
+el motor declara sus teclas en `KEYS_USED`, y una prueba exige que coincidan
+exactamente con las de su `GameSpec`.
 
 ## Reglas de render
 
@@ -129,7 +151,19 @@ Las garantiza el motor si se usa como está:
 
 ```powershell
 node tools/capturas_motor.js
+node tools/capturas_jardin.js
 uv run pytest tests/test_motor.py tests/test_game_page.py -q
+```
+
+`capturas_jardin.js` no solo dibuja: ejercita el juego con los mismos mensajes
+que manda la página y falla si la compuerta no detiene la simulación, si la
+mecánica no es la anterior, si la escena no responde a la calma o si el
+teclado altera la señal dentro de la aplicación. Para medir también la
+alocación por cuadro hay que impedir que el recolector corra durante la
+medición, o la cifra sale engañosamente baja:
+
+```powershell
+node --expose-gc --min-semi-space-size=256 --max-semi-space-size=256 tools/capturas_jardin.js
 ```
 
 El arnés vuelca capturas en ambos temas a `results/capturas/` y falla si algún

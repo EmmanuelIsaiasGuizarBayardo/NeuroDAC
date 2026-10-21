@@ -25,7 +25,10 @@ SPEC = GameSpec(
     title="Jardin Mental",
     asset="games/jardin.html",
     signal="meditation",
-    keys=("ArrowUp", "ArrowDown"),
+    # Ninguna: dentro de la aplicacion la senal viene solo de la diadema o de
+    # la fuente simulada, declarada en pantalla. Las flechas simulan la senal
+    # unicamente con el juego abierto fuera de la aplicacion.
+    keys=(),
     explanation=_explanation("jardin"),
     game_width=7,
     canvas_height="66vh",

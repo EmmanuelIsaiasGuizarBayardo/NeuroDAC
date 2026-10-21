@@ -106,7 +106,15 @@
       "parrafos": [
         "El Jardín Mental es un ejercicio de *neurofeedback* basado en meditación. La señal de meditación de la diadema hace crecer las flores: por encima de 55 la flor sube de etapa, por debajo de 45 pierde salud. El objetivo es hacer florecer las cinco manteniendo la calma, no concentrándose con fuerza.",
         "El juego no arranca hasta que la señal sirve. Antes de eso, un cero de \"todavía no hay datos\" entraba como si fuera meditación nula y la flor se marchitaba sola en unos diecisiete segundos."
-      ]
+      ],
+      "pantalla": {
+        "flor": "Flor",
+        "calma": "Calma",
+        "vida": "Vida",
+        "completo": "¡Jardín completo!",
+        "marchita": "La flor se marchitó",
+        "teclado": "Sin diadema: usa las flechas"
+      }
     },
     "carrera": {
       "titulo": "Cómo funciona",

@@ -17,7 +17,8 @@ process.stdin.on('end', () => {
   const salida = casos.map((caso) => {
     delete require.cache[ENGINE];
     const E = require(ENGINE);
-    // Antes del umbral del modo autonomo: se esta dentro de la aplicacion.
+    // Los mensajes llegan a un juego dentro del iframe de la aplicacion.
+    E.setEmbedded(true);
     const ahora = 100;
     const aceptados = caso.mensajes.map((m) => E.receive(m, ahora));
     return {

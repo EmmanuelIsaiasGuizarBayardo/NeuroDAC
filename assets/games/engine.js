@@ -265,8 +265,17 @@
   const K_RING = 3;
   const K_TRIANGLE = 4;
 
-  /** Evalua la primitiva activa en (px, py); deja distancia y normal. */
-  function evaluate(kind, px, py) {
+  /**
+   * Evalua la primitiva activa en el centro del pixel (x, y); deja distancia y
+   * normal en OUT.
+   *
+   * Recibe enteros y suma el medio pixel adentro. Si recibiera los flotantes
+   * x + 0.5, cada uno cruzaria la llamada empaquetado en el heap: 32 bytes por
+   * pixel, decenas de KB por cuadro.
+   */
+  function evaluate(kind, x, y) {
+    const px = x + 0.5;
+    const py = y + 0.5;
     switch (kind) {
       case K_ELLIPSE: {
         // P: cx, cy, rx, ry, cos, sin
@@ -377,7 +386,7 @@
     for (let y = ya; y <= yb; y++) {
       let j = y * f.w + xa;
       for (let x = xa; x <= xb; x++, j++) {
-        evaluate(kind, x + 0.5, y + 0.5);
+        evaluate(kind, x, y);
         if (OUT[SD] > 0) continue;
         let t = shade(mat);
         if (specHit) {
@@ -630,6 +639,16 @@
     return cx;
   }
 
+  /** Primer caracter que la fuente no puede dibujar, o null si todos se pueden. */
+  function unsupportedChar(str) {
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code === 32) continue;
+      if (code >= 256 || GLYPH[code] === 0) return str[i];
+    }
+    return null;
+  }
+
   function textWidth(str) {
     return str.length > 0 ? str.length * GLYPH_ADVANCE - 1 : 0;
   }
@@ -766,6 +785,13 @@
     let scale = 1;
     let ox = 0;
     let oy = 0;
+    // Region del framebuffer que se presenta: todo, o un acercamiento.
+    let vx = 0;
+    let vy = 0;
+    let vw = w;
+    let vh = h;
+    let grid = false;
+    const GRID_STYLE = 'rgba(0,0,0,0.28)';
 
     function resize() {
       const dpr = root.devicePixelRatio || 1;
@@ -773,10 +799,27 @@
       const ch = Math.max(1, Math.floor(canvas.clientHeight * dpr));
       canvas.width = cw;
       canvas.height = ch;
-      scale = Math.max(1, Math.floor(Math.min(cw / w, ch / h)));
-      ox = (cw - w * scale) >> 1;
-      oy = (ch - h * scale) >> 1;
+      scale = Math.max(1, Math.floor(Math.min(cw / vw, ch / vh)));
+      ox = (cw - vw * scale) >> 1;
+      oy = (ch - vh * scale) >> 1;
       ctx.imageSmoothingEnabled = false;
+    }
+
+    /** Acercamiento entero a una region; sin argumentos vuelve al cuadro completo. */
+    function setView(x, y, rw, rh) {
+      if (x === undefined) {
+        vx = 0; vy = 0; vw = w; vh = h;
+      } else {
+        vx = Math.max(0, x | 0);
+        vy = Math.max(0, y | 0);
+        vw = Math.min(w - vx, rw | 0);
+        vh = Math.min(h - vy, rh | 0);
+      }
+      resize();
+    }
+
+    function setGrid(on) {
+      grid = !!on;
     }
 
     function setTheme(name, backdropIndex) {
@@ -792,13 +835,25 @@
       sctx.putImageData(image, 0, 0);
       ctx.fillStyle = backdrop;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(small, 0, 0, w, h, ox, oy, w * scale, h * scale);
+      ctx.drawImage(small, vx, vy, vw, vh, ox, oy, vw * scale, vh * scale);
+      // Rejilla de depuracion: rectangulos de 1 px, sin antialiasing.
+      if (grid && scale >= 3) {
+        ctx.fillStyle = GRID_STYLE;
+        for (let i = 0; i <= vw; i++) ctx.fillRect(ox + i * scale, oy, 1, vh * scale);
+        for (let j = 0; j <= vh; j++) ctx.fillRect(ox, oy + j * scale, vw * scale, 1);
+      }
     }
 
     canvas.style.imageRendering = 'pixelated';
     root.addEventListener('resize', resize);
     resize();
-    return { present: present, setTheme: setTheme, resize: resize };
+    return {
+      present: present,
+      setTheme: setTheme,
+      resize: resize,
+      setView: setView,
+      setGrid: setGrid,
+    };
   }
 
   /* ---------------------------------------------------------------- contrato */
@@ -808,19 +863,23 @@
    * docs/contrato-juegos.md y lo emite src/neurodac/game_page.py.
    *
    * La ausencia de senal es NaN, nunca un numero que podria ser una lectura.
-   * Si no llega ningun mensaje en STANDALONE_MS, el juego asume que se abrio
-   * solo en el navegador: la compuerta se considera abierta y la senal se
-   * controla con teclado.
+   *
+   * Un juego abierto directo en el navegador es autonomo: la compuerta se
+   * considera abierta y la senal se controla con teclado. Dentro del iframe de
+   * la aplicacion nunca lo es. No se decide por tiempo sin mensajes: el primer
+   * mensaje de la pagina puede llegar antes de que el juego cargue y perderse,
+   * y el juego se declararia autonomo dentro de la aplicacion.
    */
   const SOURCE = 'neurodac';
-  const STANDALONE_MS = 1500;
-  const KEY_COUNT = 9;
+  let embedded =
+    typeof root.top !== 'undefined' && typeof root.self !== 'undefined' && root.self !== root.top;
+  const KEY_COUNT = 10;
   const KEY = {
-    left: 0, right: 1, up: 2, down: 3, w: 4, s: 5, grid: 6, zoom: 7, sheet: 8,
+    left: 0, right: 1, up: 2, down: 3, w: 4, s: 5, grid: 6, zoom: 7, sheet: 8, scene: 9,
   };
   const KEY_BY_NAME = {
     ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3,
-    w: 4, W: 4, s: 5, S: 5, g: 6, G: 6, z: 7, Z: 7, h: 8, H: 8,
+    w: 4, W: 4, s: 5, S: 5, g: 6, G: 6, z: 7, Z: 7, h: 8, H: 8, b: 9, B: 9,
   };
 
   const input = {
@@ -850,16 +909,21 @@
     input.pressed.fill(0);
   }
 
-  function isStandalone(now) {
-    return input.lastMessageAt < 0 && now > STANDALONE_MS;
+  /** Fija si el juego corre dentro de la aplicacion; lo usan las pruebas. */
+  function setEmbedded(value) {
+    embedded = !!value;
+  }
+
+  function isStandalone() {
+    return !embedded && input.lastMessageAt < 0;
   }
 
   /**
    * Si la simulacion puede avanzar. Dentro de la aplicacion exige `ready` y
    * un valor; abierto solo, la compuerta no aplica.
    */
-  function isReady(now) {
-    if (isStandalone(now)) return true;
+  function isReady() {
+    if (isStandalone()) return true;
     return input.ready && input.signal === input.signal; // NaN no es igual a si mismo
   }
 
@@ -934,6 +998,7 @@
     blit: blit,
     text: text,
     textWidth: textWidth,
+    unsupportedChar: unsupportedChar,
     number: number,
     createParticles: createParticles,
     spawnParticle: spawnParticle,
@@ -946,6 +1011,10 @@
     listen: listen,
     endTick: endTick,
     isStandalone: isStandalone,
+    setEmbedded: setEmbedded,
+    // Las mismas que usa el oyente de teclado; expuestas para las pruebas.
+    pressKey: keyDown,
+    releaseKey: keyUp,
     isReady: isReady,
     receive: receive,
     countColors: countColors,

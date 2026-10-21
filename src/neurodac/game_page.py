@@ -308,8 +308,12 @@ def stopped_outputs(message: str, color: str) -> tuple:
 
 
 def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str, sim_id: str) -> list:
-    """Lienzo del juego con la compuerta y el aviso encima, y la explicacion debajo."""
+    """Aviso de senal simulada, lienzo con su compuerta y explicacion debajo."""
     return [
+        # Toda senal simulada se declara en pantalla mientras esta activa. Va
+        # como franja sobre el lienzo y no encima de el, para no tapar el
+        # marcador del juego.
+        sim_badge(sim_id),
         html.Div(
             className="game-canvas-container",
             style={"height": spec.canvas_height, "position": "relative"},
@@ -331,8 +335,6 @@ def _canvas_column(spec: GameSpec, frame_id: str, gate_id: str, sim_id: str) -> 
                     className="nd-gate",
                     children=gate_for(SignalState.DISCONNECTED),
                 ),
-                # Toda senal simulada se declara en pantalla mientras esta activa.
-                sim_badge(sim_id),
             ],
         ),
         html.Div(className="edu-panel mt-2", children=spec.explanation),

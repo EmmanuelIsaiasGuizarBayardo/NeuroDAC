@@ -91,14 +91,14 @@ layout = html.Div(
                 ),
                 dbc.Col(
                     width=8,
-                    children=html.Div(
-                        className="graph-container",
-                        style={"position": "relative"},
-                        children=[
-                            dcc.Graph(id="rt-graph", style={"height": "70vh"}),
-                            sim_badge("rt-sim"),
-                        ],
-                    ),
+                    children=[
+                        # Franja sobre la grafica: declarada sin tapar los ejes.
+                        sim_badge("rt-sim"),
+                        html.Div(
+                            className="graph-container",
+                            children=dcc.Graph(id="rt-graph", style={"height": "70vh"}),
+                        ),
+                    ],
                 ),
             ]
         ),

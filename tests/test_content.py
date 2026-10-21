@@ -259,6 +259,24 @@ if __name__ == "__main__":
     unittest.main(verbosity=2)
 
 
+class TestGameTextsAreGenerated(unittest.TestCase):
+    """assets/games/textos.js sale del contenido y no puede divergir de el."""
+
+    def test_game_texts_match_the_content_file(self):
+        import importlib.util
+
+        script = CONTENT_PATH.parent.parent / "tools" / "generar_textos_juegos.py"
+        spec = importlib.util.spec_from_file_location("generar_textos_juegos", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertTrue(module.OUTPUT.is_file(), "falta assets/games/textos.js")
+        self.assertEqual(
+            module.OUTPUT.read_text(encoding="utf-8"),
+            module.generate(),
+            "textos.js esta desfasado; corre uv run python tools/generar_textos_juegos.py",
+        )
+
+
 class TestManualIsGenerated(unittest.TestCase):
     """El manual es artefacto generado y no debe editarse a mano."""
 

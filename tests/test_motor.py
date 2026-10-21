@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "tools" / "capturas_motor.js"
 RECEIVER = ROOT / "tests" / "js" / "recibir.js"
+JARDIN_HARNESS = ROOT / "tools" / "capturas_jardin.js"
 
 
 @unittest.skipIf(shutil.which("node") is None, "Node no esta instalado")
@@ -36,6 +37,31 @@ class TestEngineHarness(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("pixeles fuera de paleta: 0", result.stdout)
         for name in ("motor_dark.png", "motor_light.png", "flor_zoom.png"):
+            self.assertTrue((out / name).is_file(), name)
+
+
+@unittest.skipIf(shutil.which("node") is None, "Node no esta instalado")
+class TestJardin(unittest.TestCase):
+    """Jardin Mental ejercitado con los mensajes de la pagina, sin navegador.
+
+    El arnes verifica la compuerta, que la mecanica sea la anterior, que la
+    escena responda a la calma, que el teclado no altere la senal dentro de la
+    aplicacion y que ningun pixel salga de la paleta.
+    """
+
+    def test_harness_passes(self):
+        out = ROOT / "results" / "capturas"
+        result = subprocess.run(
+            ["node", str(JARDIN_HARNESS), str(out)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("OK", result.stdout)
+        for name in ("jardin_compuerta.png", "jardin_calma_alta.png", "jardin_hoja.png"):
             self.assertTrue((out / name).is_file(), name)
 
 

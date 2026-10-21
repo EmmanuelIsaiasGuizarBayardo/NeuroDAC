@@ -53,7 +53,7 @@ SPECS = {
         title="Jardin Mental",
         asset="games/jardin.html",
         signal="meditation",
-        keys=("ArrowUp", "ArrowDown"),
+        keys=(),
     ),
     "carrera": GameSpec(
         prefix="carrera",
@@ -168,8 +168,9 @@ class TestBridgeContract(unittest.TestCase):
         for name, spec in SPECS.items():
             source = self._source(spec)
             with self.subTest(juego=name):
-                self.assertIn("setReady", source)
-                self.assertRegex(source, r"setReady\(false\)")
+                # El juego anterior la implementa con setReady(false); los que
+                # usan el motor, consultando isReady() antes de avanzar.
+                self.assertRegex(source, r"setReady\(false\)|\bisReady\(\)")
 
     def test_declared_keys_are_handled_by_the_javascript(self):
         # Atrapa el desfase entre GameSpec.keys y el manejador del juego.
@@ -178,6 +179,17 @@ class TestBridgeContract(unittest.TestCase):
             for key in spec.keys:
                 with self.subTest(juego=name, tecla=key):
                     self.assertIn(f"'{key}'", source)
+
+    def test_declared_key_list_matches_the_spec(self):
+        # Un juego sobre el motor declara las teclas que atiende en KEYS_USED;
+        # deben ser exactamente las que la pagina le reenvia.
+        for name, spec in SPECS.items():
+            match = re.search(r"const KEYS_USED = \[([^\]]*)\]", self._source(spec))
+            if match is None:
+                continue
+            declared = set(re.findall(r"'([^']+)'", match.group(1)))
+            with self.subTest(juego=name):
+                self.assertEqual(declared, set(spec.keys))
 
     def test_javascript_handles_no_unknown_keys(self):
         """Toda tecla que el juego atiende debe estar declarada en el spec."""
@@ -311,6 +323,27 @@ class TestLayout(unittest.TestCase):
         )
         badge = next(n for n in walk(build(spec)()) if getattr(n, "id", None) == "aviso-sim")
         self.assertIn("d-none", badge.className)
+
+    def test_sim_badge_does_not_cover_the_game(self):
+        # Encima del lienzo tapaba el marcador de los juegos; va como franja.
+        from neurodac.game_page import build
+
+        spec = GameSpec(
+            prefix="franja",
+            path="/franja",
+            title="Franja",
+            asset="games/jardin.html",
+            signal="meditation",
+            keys=(),
+        )
+        container = next(
+            n
+            for n in walk(build(spec)())
+            if getattr(n, "className", None) == "game-canvas-container"
+        )
+        inside = [getattr(n, "id", None) for n in walk(container)]
+        self.assertIn("franja-frame", inside)
+        self.assertNotIn("franja-sim", inside)
 
 
 def quality(signal_state: SignalState) -> Quality:
