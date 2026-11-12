@@ -193,7 +193,9 @@ def missing_data_panel() -> html.Div:
                         "aplicacion funciona sin ellos."
                     ),
                     html.Pre(
-                        "uv run python tools/preparar_datos.py",
+                        # Con uv, o con el entorno que deja tools/instalar_sin_uv.ps1.
+                        "uv run python tools/preparar_datos.py   "
+                        "|   sin uv: .venv\\Scripts\\python tools\\preparar_datos.py",
                         className="bg-dark text-light p-2 rounded",
                     ),
                     html.P(

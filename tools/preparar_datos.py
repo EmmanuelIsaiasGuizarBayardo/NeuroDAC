@@ -1,10 +1,12 @@
 """Regenera el registro de demostracion que usa la pagina de visualizacion.
 
-El CSV no se versiona: se reconstruye desde el `.set` original, que vive en
-`data/raw/` y tampoco se versiona. Asi el repositorio no carga megabytes de
-datos derivados y cualquiera puede rehacerlos con un comando.
+El CSV no se versiona: se reconstruye desde el registro original, el `.bdf`
+que publica OpenNeuro o un `.set` de EEGLAB, que vive en `data/raw/` y tampoco
+se versiona. Asi el repositorio no carga megabytes de datos derivados y
+cualquiera puede rehacerlos con un comando.
 
     uv run python tools/preparar_datos.py
+    .venv/Scripts/python tools/preparar_datos.py   # sin uv
 
 Si no hay fuente, el script dice exactamente que bajar y donde ponerlo en
 lugar de fallar con un rastro de pila.
@@ -21,8 +23,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 DATASET_ID = "ds002778"
 DATASET_NAME = "UC San Diego Resting State EEG Data from Patients with Parkinson's Disease"
-DATASET_URL = f"https://openneuro.org/datasets/{DATASET_ID}/versions/1.0.2"
+DATASET_VERSION = "1.0.2"
+DATASET_URL = f"https://openneuro.org/datasets/{DATASET_ID}/versions/{DATASET_VERSION}"
 DATASET_LICENSE = "CC0"
+# Verificados contra dataset_description.json de la version 1.0.2.
+DATASET_AUTHORS = "Rockhill, A. P., Jackson, N., George, J., Aron, A., & Swann, N. C."
+DATASET_DOI = f"https://doi.org/10.18112/openneuro.{DATASET_ID}.v{DATASET_VERSION}"
 DATASET_GIT = "https://github.com/OpenNeuroDatasets/ds002778.git"
 
 formatos = ", ".join(sorted(READERS))
@@ -50,6 +56,7 @@ OpenNeuro publica los datos en formato BioSemi (.bdf). Basta un sujeto.
     datalad get sub-hc1/ses-hc/eeg/sub-hc1_ses-hc_task-rest_eeg.bdf
 
 Despues vuelve a correr:  uv run python tools/preparar_datos.py
+                   sin uv:  .venv\\Scripts\\python tools\\preparar_datos.py
 
 Tambien puedes apuntar a un archivo concreto, en cualquiera de los
 formatos soportados ({formatos}):
@@ -79,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         "--source",
         type=Path,
         default=None,
-        help="Archivo .set de origen. Por omision se busca en data/raw/",
+        help="Registro de origen (.bdf o .set). Por omision se busca en data/raw/",
     )
     parser.add_argument(
         "--output",
@@ -121,8 +128,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Escrito  {args.output}  ({size_mb:.1f} MB)")
     print()
     print("Fuente de los datos, para citarla:")
-    print(f"  {DATASET_NAME}")
-    print(f"  OpenNeuro {DATASET_ID}, licencia {DATASET_LICENSE}")
+    print(f"  {DATASET_AUTHORS} {DATASET_NAME}")
+    print(f"  (Version {DATASET_VERSION}) [Conjunto de datos]. OpenNeuro. {DATASET_DOI}")
+    print(f"  Licencia {DATASET_LICENSE}. El README del dataset pide citar tambien sus")
+    print("  articulos asociados y escribir a los curadores antes de enviar a una")
+    print("  revista arbitrada un manuscrito que use estos datos.")
     return 0
 
 

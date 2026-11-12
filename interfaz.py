@@ -6,6 +6,9 @@ ejecutable del proyecto:
     uv run python interfaz.py
     uv run python interfaz.py --debug        # recarga automatica al editar
     uv run python interfaz.py --host 0.0.0.0 # visible desde otra maquina
+
+Sin uv, tras tools/instalar_sin_uv.ps1: doble clic en iniciar_neurodac.bat, o
+    .venv/Scripts/python.exe interfaz.py
 """
 
 from __future__ import annotations

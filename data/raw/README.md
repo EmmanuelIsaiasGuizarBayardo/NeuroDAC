@@ -24,4 +24,4 @@ Para convertir o leer: `mne-bids` (`pip install mne-bids`).
 
 | Dataset | Origen | Fecha de descarga | Licencia |
 |---------|--------|-------------------|----------|
-|         |        |                   |          |
+| ds002778 v1.0.2, sub-hc1 (UC San Diego, resting state) | OpenNeuro, https://doi.org/10.18112/openneuro.ds002778.v1.0.2 | (anotar al descargar) | CC0 |

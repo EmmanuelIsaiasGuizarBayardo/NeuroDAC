@@ -16,7 +16,7 @@ diseño que de otro modo parecerían exageradas.
 | | |
 |---|---|
 | Python | 3.12, fijado en `.python-version` |
-| Gestor | [uv](https://docs.astral.sh/uv/) |
+| Gestor | [uv](https://docs.astral.sh/uv/) para desarrollar; solo `pip` para una demostración |
 | Sistema | Windows 10 para usar la diadema; cualquiera para desarrollar |
 | Hardware | NeuroSky MindWave Mobile 2 (opcional: hay diadema simulada) |
 
@@ -41,6 +41,41 @@ editable. La aplicación queda en <http://127.0.0.1:8050>.
 **No hace falta la diadema para desarrollar.** Cada página trae un selector de
 fuente con la opción *Simulada*, que genera tramas ThinkGear sintéticas y
 recorre los mismos estados que el hardware real.
+
+### Sin uv: una computadora prestada
+
+Para una demostración en una computadora donde no conviene instalar uv basta
+Python 3.12 o posterior. Desde la raíz del repositorio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\instalar_sin_uv.ps1
+```
+
+y para arrancar, doble clic en `iniciar_neurodac.bat`, que abre el navegador.
+
+El instalador crea `.venv`, instala `requirements-demo.txt`, que trae solo lo
+necesario para correr la aplicación con las mismas versiones exactas de
+`uv.lock`, sin herramientas de desarrollo, e instala NeuroDAC en modo
+editable. Ese modo es obligatorio: `content.py` ubica `content/` relativo al
+código fuente, y un `pip install .` normal copiaría el paquete a
+`site-packages`, donde la aplicación ya no encontraría su contenido.
+
+**Sin internet en el lugar de la demostración.** En una máquina con internet:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\instalar_sin_uv.ps1 -DescargarPaquetes
+```
+
+deja en `paquetes\` las 54 ruedas para Windows x64 (unos 106 MB), incluido lo
+que necesita la construcción editable. Se copia la carpeta del repositorio
+completa y, en la computadora prestada, se instala con `-SinInternet`. Las
+ruedas compiladas son de versión exacta: si allá hay Python 3.13, descárgalas
+con `-VersionDestino 3.13`; el instalador lo verifica antes de empezar.
+`paquetes\` trae su propio `.gitignore` y no entra al repositorio.
+
+`requirements-demo.txt` se genera desde `uv.lock`:
+`uv run python tools/exportar_requisitos_demo.py`. Una prueba falla si queda
+desfasado o si el código de la aplicación importa algo que no está en él.
 
 ### Datos
 
